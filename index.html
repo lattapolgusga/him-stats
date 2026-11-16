@@ -35,7 +35,7 @@ async function api(action,extra={}){const r=await fetch(CFG.API_URL,{method:'POS
  if(!j.ok){if(j.error=='SESSION'){setT(null);loginV();throw new Error('กรุณาเข้าสู่ระบบใหม่')}throw new Error(j.error)}return j.data}
 function setT(t){TOKEN=t;try{t?localStorage.setItem('him_t',t):localStorage.removeItem('him_t')}catch(e){}}
 function err(e){A().innerHTML=`<div class="card login"><p class="dn">${esc(e.message||e)}</p><button onclick="location.reload()">ลองใหม่</button></div>`}
-async function boot(){try{if(TOKEN)return await load();const st=await api('status');st.needsAdmin?bootV():loginV()}catch(e){if(document.getElementById('lu'))return;err(e)}}
+async function boot(){try{const mk=new URLSearchParams(location.search).get('k');if(mk){const r=await api('magic',{k:mk});setT(r.token);history.replaceState(null,'',location.pathname);return await load()}if(TOKEN)return await load();const st=await api('status');st.needsAdmin?bootV():loginV()}catch(e){if(document.getElementById('lu'))return;err(e)}}
 function loginV(msg){MB=null;RP=null;document.getElementById('tabs').innerHTML='';document.getElementById('strip').innerHTML='';document.getElementById('who').textContent='';
  A().innerHTML=`<form class="card login" onsubmit="event.preventDefault();doLogin()"><div style="font-size:40px">⛪</div><h3>เข้าสู่ระบบ</h3>
  <input id="lu" list="nl" placeholder="ชื่อกลุ่ม / คริสตจักร หรือรหัส" autocomplete="username"><datalist id="nl"></datalist><input id="lp" type="password" placeholder="รหัสผ่าน" autocomplete="current-password" style="margin-top:8px">

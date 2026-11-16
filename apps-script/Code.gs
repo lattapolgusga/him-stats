@@ -89,6 +89,11 @@ function api_(b) {
     log_(b.username, 'bootstrap', {});
     b.action = 'login';
   }
+  if (b.action === 'magic') {
+    const k = P.getProperty('EXEC_LINK_KEY'); if (!k || String(b.k || '') !== k) throw new Error('ลิงก์ไม่ถูกต้อง');
+    const t = users_().find(x => x.username === 'him_exec' && x.status === 'active'); if (!t) throw new Error('ไม่พบบัญชี');
+    const token = Utilities.getUuid() + rand_(8); cache().put('s:' + token, t.username, 21600); log_(t.username, 'magicLogin', {}); return { token };
+  }
   if (b.action === 'login') {
     const key = 'f:' + String(b.username).toLowerCase(), fails = Number(cache().get(key) || 0);
     if (fails >= 5) throw new Error('ใส่รหัสผิดหลายครั้ง กรุณารอ 10 นาที');
