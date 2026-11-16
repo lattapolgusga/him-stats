@@ -217,11 +217,13 @@ function answer_(q, u) {
 function sheetsContext_() {
   const skip = [SH.USER, SH.LOG];
   let out = '';
-  ss().getSheets().forEach(sh => {
+  const books = [[ss(), 'ฐานข้อมูลกลาง']];
+  try { books.push([SpreadsheetApp.openById(P.getProperty('SOURCE_SHEET_ID') || '1QV6Ft7ED8eK0zE_BcZm2TJDtih9BXP8XZZpu7OTykJw'), 'ชีตต้นฉบับงานพันธกิจ']); } catch (e) {}
+  books.forEach(([book, label]) => book.getSheets().forEach(sh => {
     if (skip.includes(sh.getName())) return;
     const v = sh.getDataRange().getDisplayValues().filter(r => r.some(String));
-    out += `\n### แท็บ: ${sh.getName()} (${v.length - 1} แถว)\n` + v.map(r => r.map(x => String(x).replace(/[\t\n]/g, ' ')).join('\t')).join('\n') + '\n';
-  });
+    out += `\n### [${label}] แท็บ: ${sh.getName()} (${v.length - 1} แถว)\n` + v.map(r => r.map(x => String(x).replace(/[\t\n]/g, ' ')).join('\t')).join('\n') + '\n';
+  }));
   return out.slice(0, 180000);
 }
 function askAI_(q, u) {
@@ -230,7 +232,9 @@ function askAI_(q, u) {
   if (!ctx) { ctx = sheetsContext_(); try { c.put(key, ctx, 300); } catch (e) {} }
   const sys = 'คุณคือ "เลขางานพันธกิจ H.I.M. Thailand" ตอบคำถามฝ่ายบริหารจากข้อมูลใน Google Sheet ที่ให้มาเท่านั้น ' +
     'ตอบภาษาไทย สั้น กระชับ เป็นข้อความธรรมดาสำหรับแชท LINE (ไม่ใช้ markdown ตาราง) ใส่ตัวเลขที่นับจริงจากข้อมูล ' +
-    'ถ้าข้อมูลไม่พอหรือช่องว่าง ให้บอกตรงๆ ว่าข้อมูลส่วนไหนยังไม่ครบ ห้ามเดา ' +
+    'ข้อมูลมาจาก 2 แหล่ง: ฐานข้อมูลกลาง (ทะเบียน/สถิติที่ผู้นำกรอก) และชีตต้นฉบับงานพันธกิจ (สรุปรายภาค เป้าหมาย โครงการ ผู้สมัครบุกเบิก ฯลฯ) ให้ค้นทุกแท็บและเชื่อมโยงกัน เช่น จังหวัด→ภาค ' +
+    'ห้ามตอบเพียงว่า "ไม่มีข้อมูล" ให้หาข้อมูลที่ใกล้เคียงที่สุดมาตอบเสมอ แล้วบอกบรรทัดแรกว่า "✅ ตรงกับที่ถาม" หรือ "⚠️ ใกล้เคียง (ไม่ตรงทั้งหมด)" ' +
+    'ถ้าใกล้เคียง ให้อธิบายสั้นๆ ว่าต่างจากที่ถามอย่างไร (เช่น เป็นเป้าหมายไม่ใช่ยอดจริง, เป็นระดับภาคไม่ใช่จังหวัด) และระบุแท็บที่ใช้ ห้ามแต่งตัวเลขเอง ' +
     `รอบรายงานปัจจุบันคือ ${P.getProperty('CURRENT_ROUND')} ใช้ภาษาที่สุภาพและให้กำลังใจ ใช้คำว่า "กำลังเติบโต" แทน "ต่ำกว่ามาตรฐาน"`;
   const r = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
     method: 'post', contentType: 'application/json', muteHttpExceptions: true,
