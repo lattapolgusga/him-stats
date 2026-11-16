@@ -312,7 +312,7 @@ function askAI_(q, u) {
   const r = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
     method: 'post', contentType: 'application/json', muteHttpExceptions: true,
     headers: { 'x-api-key': P.getProperty('ANTHROPIC_API_KEY'), 'anthropic-version': '2023-06-01' },
-    payload: JSON.stringify({ model: P.getProperty('AI_MODEL') || 'claude-haiku-5-5', max_tokens: 2500, system: sys,
+    payload: JSON.stringify({ model: P.getProperty('AI_MODEL') || 'claude-haiku-5-5', max_tokens: 8000, system: sys,
       messages: [{ role: 'user', content: 'ข้อมูลทั้งหมด (คั่นคอลัมน์ด้วย tab):\n' + ctx + '\n\nคำถาม: ' + q }] })
   });
   if (r.getResponseCode() !== 200) { log_(u.username, 'aiError', { code: r.getResponseCode(), body: r.getContentText().slice(0, 300) }); return answer_(q, u); }
