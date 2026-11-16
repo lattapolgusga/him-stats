@@ -152,7 +152,7 @@ function api_(b) {
     const m = b.m || {}; if (!u.codes.includes(m.code)) throw new Error('ไม่มีสิทธิ์จัดการสมาชิกของคริสตจักรนี้');
     lock.waitLock(20000);
     try {
-      const i = m.id ? v.findIndex(r => r[0] === m.id) : -1;
+      const i = m.id ? v.findIndex(r => r[0] === m.id) : -1; if (i > 0 && !u.codes.includes(v[i][1])) throw new Error('ไม่มีสิทธิ์');
       if (b.action === 'memberDel') { if (i > 0) sh.deleteRow(i + 1); log_(u.username, 'memberDel', { id: m.id, code: m.code }); return { ok: true }; }
       if (!String(m.fn || m.nick || '').trim()) throw new Error('กรุณาใส่ชื่อหรือชื่อเล่น');
       if (!m.id) m.id = 'M' + Date.now().toString(36);
@@ -281,7 +281,7 @@ function answer_(q, u) {
 
 /* ---------- AI เลขา: อ่านทุกแท็บใน Sheet แล้วตอบคำถาม (เฉพาะแอดมิน) ---------- */
 function sheetsContext_() {
-  const skip = [SH.USER, SH.LOG];
+  const skip = [SH.USER, SH.LOG, 'สมาชิก'];
   let out = '';
   const books = [[ss(), 'ฐานข้อมูลกลาง']];
   try { books.push([SpreadsheetApp.openById(P.getProperty('SOURCE_SHEET_ID') || '1QV6Ft7ED8eK0zE_BcZm2TJDtih9BXP8XZZpu7OTykJw'), 'ชีตต้นฉบับงานพันธกิจ']); } catch (e) {}
