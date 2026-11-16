@@ -54,9 +54,29 @@ const prevOf=c=>{let f=0;for(let i=ROUNDS.length-1;i>=0;i--)if(val(c,ROUNDS[i])!
 const size=v=>v==null?'':v<30?'XS':v<=50?'S':v<=100?'M':'L';
 function regV(){A().innerHTML=`<div class="card login"><h3>ลงทะเบียนครั้งแรก</h3><p class="note">ใส่รหัสคริสตจักรที่ได้รับจากผู้ดูแลภาค (เช่น N1-001)</p><input id="cc" placeholder="รหัสคริสตจักร"><button style="width:100%;margin-top:10px" onclick="reqB()">ส่งคำขอ</button><div id="m"></div></div>`}
 async function reqB(){try{await api('request',{code:cc.value});load()}catch(e){m.innerHTML=`<p class="dn">${esc(e.message)}</p>`}}
-function render(){const tabs=ME.role=='admin'?[['dash','แดชบอร์ด'],['list','ทะเบียน'],['users','ผู้ใช้'],['acct','บัญชีของฉัน']]:[['form','กรอกสถิติ'],['mine','ข้อมูลของฉัน'],['acct','บัญชีของฉัน']];
+function render(){const tabs=ME.role=='admin'?[['dash','แดชบอร์ด'],['list','ทะเบียน'],['rep','รายงานภาค'],['users','ผู้ใช้'],['acct','บัญชีของฉัน']]:[['form','กรอกสถิติ'],['rep','รายงานภาค'],['mine','ข้อมูลของฉัน'],['acct','บัญชีของฉัน']];
  document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button class="${view==k?'on':''}" onclick="view='${k}';render()">${l}</button>`).join('');
- ({dash:dashV,list:listV,users:usersV,acct:acctV,form:formV,mine:mineV})[view]()}
+ ({dash:dashV,list:listV,users:usersV,acct:acctV,form:formV,mine:mineV,rep:repV})[view]()}
+const AGD=['ย้ำนิมิตองค์กรฮิม ภาค คริสตจักร','ทบทวนเป้าหมายประจำเดือน','สถิติการเติบโต (เพิ่มพูน/อภิบาล/พัฒนา)','โครงการ 111 / งานประกาศ','สอนพระคัมภีร์','รายงานการถวายทรัพย์','สะท้อนปัญหา / แนวทางแก้','อธิษฐานเผื่อกัน','อื่นๆ'];
+const RS={r6:{t:'แผน 111 (ไตรมาส 3-4)',fix:['การประกาศของ คจ ภายในภาค','LG','กลุ่มบุกเบิก','ศูนย์','คริสตจักร'],c:[['สิ่งที่ตั้งใจเปิด','f'],['จำนวน (แห่ง)','n'],['ชื่อผู้นำ'],['กำหนดเปิด','d'],['สิ่งที่ต้องการสนับสนุน'],['ประเมินผล Q3']]},
+ r5:{t:'Best Practice & Pain Point',fix:[['Best Practice',1],['Best Practice',2],['Best Practice',3],['Pain Point',1],['Pain Point',2],['Pain Point',3]],c:[['ประเภท','f'],['ลำดับ','f'],['รายละเอียด','l']]},
+ r4:{t:'ผลการดำเนินงาน ไตรมาส 3',c:[['เป้าหมายไตรมาส 3','l'],['ผลลัพธ์','l'],['กิจกรรม/การประกาศ','l'],['ลิงก์ภาพ']]},
+ r2:{t:'แผนสถาบัน Youth',c:[['จังหวัด'],['มหาวิทยาลัย/วิทยาลัย'],['แผนการประกาศ','l'],['แผนการสร้างสาวก','l']]},
+ r8:{t:'ประชุมดาวิดภาค',c:[['วันที่ประชุม','d']].concat(AGD.map(x=>[x,'c'])).concat([['รายละเอียดเพิ่มเติม','l']])}};
+let RP=null,RG='',RTp='r6',RR={};
+async function repV(){if(!RP){A().innerHTML='<div class="card">กำลังโหลด…</div>';try{RP=await api('regReports');RG=RP.regs[0]||''}catch(e){return err(e)}}RR={};repDraw()}
+function repRows(t){const S=RS[t],got=(RP.data[t]||[]).filter(r=>r[0]==RG).map(r=>r.slice(1));
+ if(S.fix)return S.fix.map(f=>{const k=[].concat(f),g=got.find(r=>k.every((x,i)=>String(r[i])==String(x)));return g||k.concat(Array(S.c.length-k.length).fill(''))});
+ return got.length?got:[Array(S.c.length).fill('')]}
+function repDraw(){const S=RS[RTp];const rows=RR[RTp+RG]||(RR[RTp+RG]=repRows(RTp));
+ const cell=(v,[l,ty],i,j)=>ty=='f'?`<td><b>${esc(v)}</b></td>`:ty=='c'?`<td style="text-align:center"><input type="checkbox" style="width:auto" ${v&&v!==''?'checked':''} onchange="RR['${RTp+RG}'][${i}][${j}]=this.checked"></td>`:ty=='l'?`<td><textarea rows="2" style="min-width:180px" oninput="RR['${RTp+RG}'][${i}][${j}]=this.value">${esc(v??'')}</textarea></td>`:`<td><input ${ty=='n'?'type="number" min="0" style="width:80px"':ty=='d'?'type="text" placeholder="วว/ดด/ปปปป" style="width:120px"':''} value="${esc(v??'')}" oninput="RR['${RTp+RG}'][${i}][${j}]=this.value"></td>`;
+ A().innerHTML=`<div class="card"><div class="row"><div><label>ภาค</label><select onchange="RG=this.value;repDraw()">${RP.regs.map(g=>`<option ${g==RG?'selected':''}>${esc(g)}</option>`).join('')}</select></div><div><label>รอบรายงาน</label><input disabled value="${esc(RP.round)}"></div></div>
+ <div style="margin:12px 0;display:flex;gap:6px;flex-wrap:wrap">${Object.keys(RS).map(k=>`<button class="${k==RTp?'':'sec'}" onclick="RTp='${k}';repDraw()">${RS[k].t}</button>`).join('')}</div>
+ <h3>${S.t} · ${esc(RG)}</h3><div class="tw"><table><tr>${S.c.map(c=>`<th>${esc(c[0])}</th>`).join('')}${S.fix?'':'<th></th>'}</tr>${rows.map((r,i)=>`<tr>${S.c.map((c,j)=>cell(r[j],c,i,j)).join('')}${S.fix?'':`<td><button class="sec" onclick="RR['${RTp+RG}'].splice(${i},1);repDraw()">ลบ</button></td>`}</tr>`).join('')}</table></div>
+ ${S.fix?'':`<button class="sec" style="margin-top:8px" onclick="RR['${RTp+RG}'].push(Array(${S.c.length}).fill(''));repDraw()">+ เพิ่มแถว</button>`}
+ <button id="rb" style="width:100%;margin-top:14px" onclick="repSave()">บันทึกรายงาน</button><div id="rm"></div></div>`}
+async function repSave(){rb.disabled=true;rb.textContent='กำลังบันทึก…';const rows=RR[RTp+RG];
+ try{await api('regReport',{type:RTp,reg:RG,rows});RP.data[RTp]=(RP.data[RTp]||[]).filter(r=>r[0]!=RG).concat(rows.map(r=>[RG].concat(r)));rm.innerHTML='<div class="ok">✅ บันทึกแล้ว ขอบคุณครับ</div>'}catch(e){rm.innerHTML=`<p class="dn">${esc(e.message)}</p>`}rb.disabled=false;rb.textContent='บันทึกรายงาน'}
 const NUM1=[['mem','จน.สมาชิก'],['lgatt','มา LG'],['int','ผู้สนใจ'],['nb','ผู้เชื่อใหม่'],['pwo','เข้าเรียน พวอ.'],['lgl','ผู้นำ LG'],['men','พี่เลี้ยง'],['o2o','1 ต่อ 1']];
 const AGE=[['a1','เด็ก 3-12 ปี'],['a2','Ablaze 13-18 ปี'],['a3','Ablaze/Uni 19-22 ปี'],['a4','Young Pro 23-35 ปี'],['a5','Pro 36-59 ปี'],['a6','ครอบครัว/แต่งงานแล้ว'],['a7','สูงวัยใจเกินร้อย 60+']];
 const CK=[['c1','มี LG ทุกสัปดาห์'],['c2','มีชั้นดาวิดทุกเดือน'],['c3','มีชั้นเรียน พวอ.'],['c4','มีทีม WAM'],['c5','มีการเทศนา'],['c6','มีการถวายทรัพย์'],['c7','มีทีมรับใช้เพียงพอ'],['c8','มีศิษยาภิบาลประจำ']];

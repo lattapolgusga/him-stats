@@ -102,6 +102,29 @@ function api_(b) {
     if (String(b.password || '').length < 8) throw new Error('รหัสผ่านใหม่อย่างน้อย 8 ตัว');
     setPw_(u, b.password); log_(u.username, 'password', {}); return {};
   }
+  if (b.action === 'regReports' || b.action === 'regReport') {   // รายงานระดับภาค (R2,R4,R5,R6,R8)
+    const RT = { r2: ['รายงานภาค R2 สถาบัน Youth', ['จังหวัด','มหาวิทยาลัย/วิทยาลัย','แผนการประกาศ','แผนการสร้างสาวก']],
+      r4: ['รายงานภาค R4 ผลดำเนินงาน', ['เป้าหมาย','ผลลัพธ์','กิจกรรม/การประกาศ','ลิงก์ภาพ']],
+      r5: ['รายงานภาค R5 BestPractice-PainPoint', ['ประเภท','ลำดับ','รายละเอียด']],
+      r6: ['รายงานภาค R6 แผน 111', ['สิ่งที่ตั้งใจเปิด','จำนวน (แห่ง)','ชื่อผู้นำ','กำหนดเปิด','สิ่งที่ต้องการสนับสนุน','ประเมินผล']],
+      r8: ['รายงานภาค R8 ประชุมดาวิด', ['วันที่ประชุม','ย้ำนิมิต','ทบทวนเป้าหมาย','สถิติการเติบโต','โครงการ 111/ประกาศ','สอนพระคัมภีร์','รายงานถวายทรัพย์','สะท้อนปัญหา/แก้ไข','อธิษฐานเผื่อกัน','อื่นๆ','รายละเอียด']] };
+    const myRegs = admin ? [...new Set(C.map(c => c.reg))] : [...new Set(C.filter(c => u.codes.includes(c.code)).map(c => c.reg))];
+    const tab = t => { const [n, h] = RT[t]; let sh = ss().getSheetByName(n); if (!sh) { sh = ss().insertSheet(n); sh.appendRow(['รอบ','ภาค'].concat(h).concat(['ส่งโดย','เวลาส่ง'])); sh.setFrozenRows(1); } return sh; };
+    if (b.action === 'regReports') {
+      const out = {}; Object.keys(RT).forEach(t => { out[t] = tab(t).getDataRange().getValues().slice(1).filter(r => String(r[0]) === round && myRegs.includes(r[1])).map(r => r.slice(1, 2 + RT[t][1].length)); });
+      return { regs: myRegs, round, data: out };
+    }
+    if (!RT[b.type] || !myRegs.includes(b.reg)) throw new Error('ไม่มีสิทธิ์ส่งรายงานของภาคนี้');
+    lock.waitLock(20000);
+    try {
+      const sh = tab(b.type), v = sh.getDataRange().getValues(), k = RT[b.type][1].length;
+      for (let i = v.length - 1; i >= 1; i--) if (String(v[i][0]) === round && v[i][1] === b.reg) sh.deleteRow(i + 1);
+      const rows = (b.rows || []).filter(r => r.some(x => x !== '' && x !== false && x != null)).map(r => [round, b.reg].concat(r.slice(0, k).map(x => x === true ? '✓' : x === false ? '' : x)).concat([u.name || u.username, new Date()]));
+      if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+    } finally { lock.releaseLock(); }
+    log_(u.username, 'regReport', { type: b.type, reg: b.reg, n: (b.rows || []).length });
+    return { saved: true };
+  }
   if (b.action === 'linkcode') {                       // รหัสเชื่อม LINE OA
     const code = String(Math.floor(100000 + Math.random() * 900000));
     cache().put('l:' + code, u.username, 600); return { code };
