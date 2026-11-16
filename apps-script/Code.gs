@@ -35,7 +35,7 @@ function setup() {
 /* ---------- ข้อมูล ---------- */
 function rows_(name) { const v = ss().getSheetByName(name).getDataRange().getValues(); v.shift(); return v; }
 function churches_() {
-  return rows_(SH.REG).filter(r => r[0]).map(r => ({ code: r[0], reg: r[1], prov: r[2], type: r[3], name: r[4], leader: r[5], shirt: r[6], phone: r[7], email: r[8], reged: r[9], regdate: r[10], status: r[11], note: r[14], p111: !!r[15], plus: !!r[16] }));
+  return rows_(SH.REG).filter(r => r[0]).map(r => ({ code: r[0], reg: r[1], prov: r[2], type: r[3], name: r[4], leader: r[5], shirt: r[6], phone: r[7], email: r[8], reged: r[9], regdate: r[10], status: r[11], note: r[14], p111: !!r[15], plus: !!r[16], addr: r[17] || '', map: r[18] || '', photo: r[19] || '' }));
 }
 function stats_() {
   return rows_(SH.STAT).filter(r => r[0]).map(r => { const x = {}; XF.forEach(([k], j) => { if (r[11 + j] !== '' && r[11 + j] != null) x[k] = r[11 + j]; });
@@ -180,12 +180,24 @@ function api_(b) {
     log_(u.username, 'submit', { code: c.code, round, n });
     return { saved: true };
   }
+  if (b.action === 'uploadPhoto') {                    // รูปคริสตจักร → Google Drive
+    if (u.role === 'exec') throw new Error('บัญชีผู้บริหารดูได้อย่างเดียว');
+    if (!admin && !u.codes.includes(b.code)) throw new Error('ไม่มีสิทธิ์แก้ข้อมูลคริสตจักรนี้');
+    const data = String(b.data || ''); if (data.length > 4e6) throw new Error('รูปใหญ่เกินไป');
+    const sh = ss().getSheetByName(SH.REG), v = sh.getDataRange().getValues(), i = v.findIndex(r => r[0] === b.code); if (i < 1) throw new Error('ไม่พบคริสตจักร');
+    const it = DriveApp.getFoldersByName('HIM Stats รูปคริสตจักร'), folder = it.hasNext() ? it.next() : DriveApp.createFolder('HIM Stats รูปคริสตจักร');
+    const f = folder.createFile(Utilities.newBlob(Utilities.base64Decode(data), 'image/jpeg', b.code + '-' + Date.now() + '.jpg'));
+    f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    sh.getRange(i + 1, 20).setValue(f.getId()); log_(u.username, 'uploadPhoto', { code: b.code, id: f.getId() });
+    return { id: f.getId() };
+  }
   if (b.action === 'updateInfo') {                     // ผู้นำแก้ข้อมูลทั่วไป + การขึ้นทะเบียน ศบ.
     if (!admin && !u.codes.includes(b.code)) throw new Error('ไม่มีสิทธิ์แก้ข้อมูลคริสตจักรนี้');
     const sh = ss().getSheetByName(SH.REG), v = sh.getDataRange().getValues();
     const i = v.findIndex(r => r[0] === b.code); if (i < 1) throw new Error('ไม่พบคริสตจักร');
     const clean = x => String(x == null ? '' : x).trim().slice(0, 120);
-    const f = { 3: clean(b.prov), 6: clean(b.leader), 7: clean(b.shirt), 8: clean(b.phone), 9: clean(b.email), 10: b.reged ? 'ขึ้นทะเบียนแล้ว' : '', 11: b.reged ? clean(b.regdate) : '', 16: b.p111 ? '✓' : '', 17: b.plus ? '✓' : '' };
+    const f = { 3: clean(b.prov), 6: clean(b.leader), 7: clean(b.shirt), 8: clean(b.phone), 9: clean(b.email), 10: b.reged ? 'ขึ้นทะเบียนแล้ว' : '', 11: b.reged ? clean(b.regdate) : '', 16: b.p111 ? '✓' : '', 17: b.plus ? '✓' : '', 18: String(b.addr || '').trim().slice(0, 300), 19: clean(b.map) };
+    if (sh.getRange(1, 18).getValue() !== 'ที่อยู่') sh.getRange(1, 18, 1, 3).setValues([['ที่อยู่', 'แผนที่/พิกัด', 'รูป (Drive id)']]);
     if (f[9] && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f[9])) throw new Error('อีเมลไม่ถูกต้อง');
     const old = {}; lock.waitLock(20000);
     try { Object.keys(f).forEach(k => { old[k] = v[i][k - 1]; sh.getRange(i + 1, Number(k)).setValue(f[k]); }); } finally { lock.releaseLock(); }
