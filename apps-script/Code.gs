@@ -39,6 +39,12 @@ function users_() {
   return rows_(SH.USER).map((r, i) => ({ row: i + 2, username: String(r[0]).trim(), name: r[1], role: r[2], codes: String(r[3]).split(',').map(x => x.trim()).filter(String), status: r[4], hash: r[7], salt: r[8], lineUserId: r[9] })).filter(u => u.username);
 }
 function log_(who, act, d) { ss().getSheetByName(SH.LOG).appendRow([new Date(), who, act, JSON.stringify(d)]); }
+function scope_(u, C) {   // ขยายสิทธิ์: coord = ทั้งภาค (REG:ชื่อภาค), exec = ทั้งประเทศ
+  const regs = u.codes.filter(k => k.startsWith('REG:')).map(k => k.slice(4));
+  if (u.role === 'exec') u.codes = C.map(c => c.code);
+  else if (u.role === 'coord') u.codes = [...new Set(u.codes.filter(k => !k.startsWith('REG:')).concat(C.filter(c => regs.includes(String(c.reg))).map(c => c.code)))];
+  return u;
+}
 function pub_(u) { return { username: u.username, name: u.name, role: u.role, codes: u.codes, status: u.status, line: !!u.lineUserId }; }
 
 /* ---------- รหัสผ่านและ session ---------- */
@@ -91,7 +97,12 @@ function api_(b) {
     return { token };
   }
   const u = session_(b.token), round = P.getProperty('CURRENT_ROUND'), C = churches_();
-  const admin = u.role === 'admin';
+  const admin = u.role === 'admin'; scope_(u, C);
+  if (u.role === 'exec' && ['submit', 'updateInfo', 'regReport'].includes(b.action)) throw new Error('บัญชีผู้บริหารดูได้อย่างเดียว');
+  if (b.action === 'ask') {
+    if (!['admin', 'exec'].includes(u.role) || !P.getProperty('ANTHROPIC_API_KEY')) throw new Error('ใช้ได้เฉพาะผู้บริหาร/แอดมิน');
+    return { text: askAI_(String(b.q || '').slice(0, 500), u) };
+  }
   if (b.action === 'me') {
     const S = stats_().filter(s => admin || u.codes.includes(s.code));
     return { user: pub_(u), round, churches: admin ? C : C.filter(c => u.codes.includes(c.code)), stats: S };
@@ -162,9 +173,10 @@ function api_(b) {
     const name = String(b.username || '').trim();
     if (!/^[A-Za-z0-9_.-]{3,30}$/.test(name)) throw new Error('username ใช้ a-z 0-9 . _ - (3–30 ตัว)');
     if (users_().some(x => x.username.toLowerCase() === name.toLowerCase())) throw new Error('username นี้มีแล้ว');
-    const codes = String(b.codes || '').toUpperCase().split(',').map(x => x.trim()).filter(String);
-    codes.forEach(k => { if (!C.find(c => c.code === k)) throw new Error('ไม่พบรหัส ' + k); });
-    ss().getSheetByName(SH.USER).appendRow([name, b.name || name, b.role === 'admin' ? 'admin' : 'leader', codes.join(','), 'active', new Date(), u.username, '', '', '']);
+    const role = ['admin', 'exec', 'coord'].includes(b.role) ? b.role : 'leader';
+    const codes = String(b.codes || '').split(',').map(x => x.trim()).filter(String).map(k => k.startsWith('REG:') ? k : k.toUpperCase());
+    codes.forEach(k => { if (k.startsWith('REG:') ? !C.some(c => String(c.reg) === k.slice(4)) : !C.find(c => c.code === k)) throw new Error('ไม่พบ ' + k); });
+    ss().getSheetByName(SH.USER).appendRow([name, b.name || name, role, codes.join(','), 'active', new Date(), u.username, '', '', '']);
     const pw = rand_(10); setPw_(users_().find(x => x.username === name), pw);
     log_(u.username, 'createUser', { name, codes }); return { username: name, password: pw };
   }
@@ -193,7 +205,7 @@ function webhook_(body) {
       if (!t) text = 'รหัสไม่ถูกต้องหรือหมดอายุ กรุณาขอรหัสใหม่จากเว็บแอป (เมนู บัญชีของฉัน)';
       else { ss().getSheetByName(SH.USER).getRange(t.row, 10).setValue(uid); cache().remove('l:' + m[2]); log_(t.username, 'linkLine', {}); text = `เชื่อมบัญชี ${t.name || t.username} เรียบร้อยแล้ว 🙏\nถามข้อมูลได้เลย เช่น "สรุปภาพรวม"`; }
     } else if (!u) text = 'สวัสดีครับ 🙏 งานพันธกิจ H.I.M.\nหากต้องการถามข้อมูลสถิติ กรุณาเชื่อมบัญชีก่อน: เข้าเว็บแอป → บัญชีของฉัน → "รหัสเชื่อม LINE" แล้วพิมพ์ เชื่อม ตามด้วยรหัส 6 หลักที่นี่';
-    else text = (u.role === 'admin' && P.getProperty('ANTHROPIC_API_KEY')) ? askAI_(q, u) : answer_(q, u);
+    else text = (['admin', 'exec'].includes(u.role) && P.getProperty('ANTHROPIC_API_KEY')) ? askAI_(q, u) : answer_(q, u);
     reply_(ev.replyToken, text);
   });
   return ContentService.createTextOutput('ok');
@@ -211,7 +223,7 @@ function answer_(q, u) {
   const rounds = [...new Set(S.map(s => s.round))].sort();
   const last = c => { const r = rounds.filter(x => by[c.code] && by[c.code][x] != null); return r.length ? by[c.code][r[r.length - 1]] : null; };
   const prev = c => { const r = rounds.filter(x => by[c.code] && by[c.code][x] != null); return r.length > 1 ? by[c.code][r[r.length - 2]] : null; };
-  const pool0 = u.role === 'admin' ? C : C.filter(c => u.codes.includes(c.code));
+  scope_(u, C); const pool0 = u.role === 'admin' ? C : C.filter(c => u.codes.includes(c.code));
   const regs = [...new Set(C.map(c => c.reg))];
   const g = regs.find(r => q.replace(/\s/g, '').includes(String(r).replace(/\s/g, '')));
   const pool = g ? pool0.filter(c => c.reg === g) : pool0;
