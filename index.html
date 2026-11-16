@@ -109,10 +109,10 @@ function healthTile(C){const codes=new Set(C.map(c=>c.code)),by={};ME.stats.filt
  const cur=[],prv=[];Object.values(by).forEach(a=>{a.sort((x,y)=>x.round<y.round?1:-1);cur.push(a[0]);if(a[1])prv.push(a[1])});
  const one=C.length==1,av=(A,f)=>A.length?Math.round(A.reduce((t,s)=>t+(+f(s)||0),0)/(one?1:A.length)*10)/10:0;
  const g=f=>typeof f=='function'?f:s=>(s.x||{})[f],tg=k=>s=>(s.x||{})[k];
- return `<div style="grid-column:1/-1;background:#f6f8fa;border-radius:12px;padding:12px 14px"><div class="note" style="margin-bottom:10px">🎯 แนวโน้มเทียบเป้าหมาย ${one?'':`(เฉลี่ยต่อแห่ง จาก ${cur.length} แห่งที่ส่ง)`} · วงสี = ทำได้กี่ % ของเป้าหมาย</div>
+ return `<div style="grid-column:1/-1;background:#f6f8fa;border-radius:12px;padding:12px 14px"><div class="note" style="margin-bottom:10px">🎯 แนวโน้มเทียบนิมิตเป้าหมาย ${one?'':`(เฉลี่ยต่อแห่ง จาก ${cur.length} แห่งที่ส่ง)`} · วงสี = ทำได้กี่ % ของนิมิตเป้าหมาย</div>
  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px">${HM.map(([l,f,t])=>{const p=av(prv,g(f)),c=av(cur,g(f)),tt=av(cur,tg(t)),pc=tt?Math.round(c/tt*100):null,gw=gr(c,p);
   const col=pc==null?'#9aa5b1':pc>=100?'#1baf7a':pc>=60?'#2a78d6':pc>=30?'#eda100':'#e34948';
-  return `<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px">${dring(pc??0,col,c,pc==null?'ยังไม่ตั้งเป้า':pc+'%')}<b style="font-size:13px">${l}</b><span class="note" style="font-size:11px">เป้าหมาย ${tt||'–'} · รอบก่อน ${prv.length?p:'–'}${gw==null?'':` <span style="color:${gw>0?'#1baf7a':gw<0?'#e34948':'#667'}">${gw>0?'▲':gw<0?'▼':''}${gw}%</span>`}</span></div>`}).join('')}</div></div>`}
+  return `<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px">${dring(pc??0,col,c,pc==null?'ยังไม่ตั้งนิมิต':pc+'%')}<b style="font-size:13px">${l}</b><span class="note" style="font-size:11px">นิมิตเป้าหมาย ${tt||'–'} · รอบก่อน ${prv.length?p:'–'}${gw==null?'':` <span style="color:${gw>0?'#1baf7a':gw<0?'#e34948':'#667'}">${gw>0?'▲':gw<0?'▼':''}${gw}%</span>`}</span></div>`}).join('')}</div></div>`}
 function strip(){if(!ME||!ME.churches)return'';const C=ME.churches,q=cur4(C),T=scopeT(C),one=C.length==1;
  const scope=one?esc(C[0].name):ME.role=='coord'?'ภาคของฉัน':['admin','exec'].includes(ME.role)?'H.I.M. Thailand ทั้งองค์กร':'คริสตจักรของฉัน';
  const sz=one?size(latest(C[0])):'',SC={XS:'#e57373',S:'#ffb74d',M:'#64b5f6',L:'#43a047'};
@@ -176,7 +176,7 @@ function formV(){const c=cur,P=prevS(c),X=P.x||{},PV=(ME.stats.filter(s=>s.code=
  ${grid(NUM1)}<div class="g3"><div><label>ผู้มาใหม่</label><input id="f2" type="number" min="0" value="${P.nw??''}"></div><div><label>บัพติศมา</label><input id="f3" type="number" min="0" value="${P.bp??''}"></div><div><label>จำนวน LG</label><input id="f4" type="number" min="0" value="${P.lg??''}"></div></div></div>
  <div class="sec2"><h4>② กลุ่มคนคล้าย (จำนวนคนแต่ละช่วงวัย)</h4>${grid(AGE)}<p class="note">รวม <b id="agt">0</b> คน</p></div>
  <div class="sec2"><h4>③ Checklist คริสตจักรมาตรฐาน</h4><div class="cks">${CK.map(cb).join('')}</div><div class="note" style="margin:4px 0 0 26px">ทีม WAM: ${WAM.map(([k,l])=>`<label class="ck" style="display:inline-flex;margin-right:12px"><input class="xc" data-k="${k}" type="checkbox" ${X[k]?'checked':''}> ${l}</label>`).join('')}</div><p class="note">ผ่าน <b id="ckt">0</b> / 8 ข้อ</p></div>
- <div class="sec2"><h4>④ เป้าหมายไตรมาสนี้</h4><p class="note">ใส่เป้าหมายของแต่ละตัว เพื่อดูกราฟแนวโน้มเทียบเป้าหมาย (ดึงค่าจากรอบก่อนมาให้ แก้ได้)</p>${grid(HM.map(([l,f,t])=>[t,l]))}</div>
+ <div class="sec2"><h4>④ นิมิตเป้าหมายไตรมาสนี้</h4><p class="note">ใส่นิมิตเป้าหมายของแต่ละตัว เพื่อดูกราฟแนวโน้มเทียบนิมิตเป้าหมาย (ดึงค่าจากรอบก่อนมาให้ แก้ได้)</p>${grid(HM.map(([l,f,t])=>[t,l]))}</div>
  <div class="sec2"><label>ติดต่อฝ่ายพันธกิจ</label><input id="f5" value="${esc(P.note||'')}"></div>
  <button id="sb" style="width:100%;margin-top:14px" onclick="sub()">บันทึก</button><div id="fm"></div></div>`;
  const upd=()=>{agt.textContent=AGE.reduce((t,[k])=>t+(+document.querySelector(`.xn[data-k=${k}]`).value||0),0);ckt.textContent=CK.filter(([k])=>document.querySelector(`.xc[data-k=${k}]`).checked).length};
