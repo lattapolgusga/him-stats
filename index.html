@@ -177,15 +177,15 @@ function formV(){const c=cur,P=prevS(c),X=P.x||{},PV=(ME.stats.filter(s=>s.code=
  <div class="sec2"><h4>② กลุ่มคนคล้าย (จำนวนคนแต่ละช่วงวัย)</h4>${grid(AGE)}<p class="note">รวม <b id="agt">0</b> คน</p></div>
  <div class="sec2"><h4>③ Checklist คริสตจักรมาตรฐาน</h4><div class="cks">${CK.map(cb).join('')}</div><div class="note" style="margin:4px 0 0 26px">ทีม WAM: ${WAM.map(([k,l])=>`<label class="ck" style="display:inline-flex;margin-right:12px"><input class="xc" data-k="${k}" type="checkbox" ${X[k]?'checked':''}> ${l}</label>`).join('')}</div><p class="note">ผ่าน <b id="ckt">0</b> / 8 ข้อ</p></div>
  <div class="sec2"><h4>④ เป้าหมายไตรมาสนี้</h4><p class="note">ใส่เป้าหมายของแต่ละตัว เพื่อดูกราฟแนวโน้มเทียบเป้าหมาย (ดึงค่าจากรอบก่อนมาให้ แก้ได้)</p>${grid(HM.map(([l,f,t])=>[t,l]))}</div>
- <div class="sec2"><label>เรื่องอธิษฐาน / ข่าว</label><input id="f5" value="${esc(P.note||'')}"></div>
- <button id="sb" style="width:100%;margin-top:14px" onclick="sub()">ส่งสถิติ</button><div id="fm"></div></div>`;
+ <div class="sec2"><label>ติดต่อฝ่ายพันธกิจ</label><input id="f5" value="${esc(P.note||'')}"></div>
+ <button id="sb" style="width:100%;margin-top:14px" onclick="sub()">บันทึก</button><div id="fm"></div></div>`;
  const upd=()=>{agt.textContent=AGE.reduce((t,[k])=>t+(+document.querySelector(`.xn[data-k=${k}]`).value||0),0);ckt.textContent=CK.filter(([k])=>document.querySelector(`.xc[data-k=${k}]`).checked).length};
  document.querySelectorAll('.xn,.xc').forEach(e=>e.addEventListener('input',upd));upd()}
-async function sub(){if(f1.value==='')return fm.innerHTML='<p class="dn">กรุณาใส่จำนวนคนมานมัสการ</p>';sb.disabled=true;sb.textContent='กำลังส่ง…';
+async function sub(){if(f1.value==='')return fm.innerHTML='<p class="dn">กรุณาใส่จำนวนคนมานมัสการ</p>';sb.disabled=true;sb.textContent='กำลังบันทึก…';
  const x={};document.querySelectorAll('.xn').forEach(e=>{if(e.value!=='')x[e.dataset.k]=+e.value});document.querySelectorAll('.xc').forEach(e=>x[e.dataset.k]=e.checked);
  try{await api('submit',{code:cur.code,n:+f1.value,nw:f2.value,bp:f3.value,lg:f4.value,note:f5.value,x});(BY[cur.code]=BY[cur.code]||{})[ME.round]=+f1.value;
   const S=ME.stats.filter(s=>!(s.code==cur.code&&s.round==ME.round));S.push({code:cur.code,round:ME.round,n:+f1.value,nw:f2.value,bp:f3.value,lg:f4.value,note:f5.value,x});ME.stats=S;
-  document.getElementById('strip').innerHTML=strip();fm.innerHTML='<div class="ok">✅ บันทึกแล้ว ขอบคุณครับ</div>'}catch(e){fm.innerHTML=`<p class="dn">${esc(e.message)}</p>`}sb.disabled=false;sb.textContent='ส่งสถิติ'}
+  document.getElementById('strip').innerHTML=strip();fm.innerHTML='<div class="ok">✅ บันทึกแล้ว ขอบคุณครับ</div>'}catch(e){fm.innerHTML=`<p class="dn">${esc(e.message)}</p>`}sb.disabled=false;sb.textContent='บันทึก'}
 function infoCard(c){const d=v=>v?esc(v instanceof Object?v:String(v).slice(0,10)):'<span class="note">—</span>';const l=latest(c);
  return `<table>${[['รหัส',esc(c.code)],['ชื่อ',esc(c.name)],['ภาค',esc(c.reg)],['จังหวัด',d(c.prov)],['ประเภท',esc(c.type)],['ผู้นำ / ศบ.',d(c.leader)],['เบอร์โทร',d(c.phone)],['อีเมล',d(c.email)],['ไซส์เสื้อ',d(c.shirt)],['ขึ้นทะเบียน',d(c.reged)+(c.regdate?' ('+d(c.regdate)+')':'')],['สถานะ',d(c.status)],['ยอดล่าสุด',l!=null?l+' คน':'—'],['ขนาด',size(l)?`<span class="tag ${size(l)}">${size(l)}</span>`:'—'],['โครงการ 111',c.p111?'✅ เข้าร่วม':'—'],['โครงการพลัส',c.plus?'✅ เข้าร่วม':'—'],['หมายเหตุ',d(c.note)]].map(([a,b])=>`<tr><th style="width:38%">${a}</th><td>${b}</td></tr>`).join('')}</table>`}
 function editV(){const c=cur,rd=String(c.regdate||'').slice(0,10);A().innerHTML=`<form class="card" style="max-width:560px;margin:auto" onsubmit="event.preventDefault();saveInfo()"><h3>แก้ไขข้อมูล · ${esc(c.name)}</h3><p class="note">${c.code} · ${esc(c.reg)} · ${esc(c.type)} (ภาค/ประเภท แก้ได้เฉพาะแอดมิน)</p>
