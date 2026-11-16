@@ -7,6 +7,10 @@
  */
 const SH = { REG: 'ทะเบียนคริสตจักร', STAT: 'สถิติ', USER: 'ผู้ใช้', LOG: 'บันทึกการแก้ไข' };
 const P = PropertiesService.getScriptProperties();
+const XF = [['mem','จน.สมาชิก'],['lgatt','มา LG'],['int','ผู้สนใจ'],['nb','ผู้เชื่อใหม่'],['pwo','เข้าเรียน พวอ.'],['lgl','ผู้นำ LG'],['men','พี่เลี้ยง'],['o2o','1 ต่อ 1'],
+  ['a1','เด็ก 3-12'],['a2','Ablaze 13-18'],['a3','Uni 19-22'],['a4','Young Pro 23-35'],['a5','Pro 36-59'],['a6','ครอบครัว'],['a7','สูงวัย 60+'],
+  ['c1','✓ LG ทุกสัปดาห์'],['c2','✓ ชั้นดาวิดทุกเดือน'],['c3','✓ ชั้นเรียน พวอ.'],['c4','✓ ทีม WAM'],['cW','✓ Worship'],['cA','✓ Art'],['cM','✓ Media'],['c5','✓ เทศนา'],['c6','✓ ถวายทรัพย์'],['c7','✓ ทีมรับใช้เพียงพอ'],['c8','✓ ศบ ประจำ']];
+
 const ss = () => SpreadsheetApp.getActiveSpreadsheet();
 
 /** รันครั้งเดียวหลังวางโค้ด: สร้างแท็บผู้ใช้/บันทึก และหัวคอลัมน์สถิติ */
@@ -28,7 +32,8 @@ function churches_() {
   return rows_(SH.REG).filter(r => r[0]).map(r => ({ code: r[0], reg: r[1], prov: r[2], type: r[3], name: r[4], leader: r[5], shirt: r[6], phone: r[7], email: r[8], reged: r[9], regdate: r[10], status: r[11], note: r[14], p111: !!r[15], plus: !!r[16] }));
 }
 function stats_() {
-  return rows_(SH.STAT).filter(r => r[0]).map(r => ({ code: r[0], round: String(r[3]).slice(0, 7), n: Number(r[4]), nw: r[5], bp: r[6], lg: r[7], note: r[8], by: r[9], at: r[10] }));
+  return rows_(SH.STAT).filter(r => r[0]).map(r => { const x = {}; XF.forEach(([k], j) => { if (r[11 + j] !== '' && r[11 + j] != null) x[k] = r[11 + j]; });
+    return { code: r[0], round: String(r[3]).slice(0, 7), n: Number(r[4]), nw: r[5], bp: r[6], lg: r[7], note: r[8], by: r[9], at: r[10], x }; });
 }
 function users_() {
   return rows_(SH.USER).map((r, i) => ({ row: i + 2, username: String(r[0]).trim(), name: r[1], role: r[2], codes: String(r[3]).split(',').map(x => x.trim()).filter(String), status: r[4], hash: r[7], salt: r[8], lineUserId: r[9] })).filter(u => u.username);
@@ -108,7 +113,8 @@ function api_(b) {
     lock.waitLock(20000);
     try {
       const sh = ss().getSheetByName(SH.STAT), v = sh.getDataRange().getValues();
-      const row = [c.code, c.name, c.reg, round, n, b.nw || '', b.bp || '', b.lg || '', b.note || '', u.name || u.username, new Date()];
+      const x = b.x || {}; if (sh.getRange(1, 12).getValue() !== XF[0][1]) sh.getRange(1, 12, 1, XF.length).setValues([XF.map(f => f[1])]);
+      const row = [c.code, c.name, c.reg, round, n, b.nw || '', b.bp || '', b.lg || '', b.note || '', u.name || u.username, new Date()].concat(XF.map(([k]) => x[k] === true ? 1 : x[k] === false ? '' : (x[k] ?? '')));
       const i = v.findIndex(r => r[0] === c.code && String(r[3]).slice(0, 7) === round);
       if (i > 0) sh.getRange(i + 1, 1, 1, row.length).setValues([row]); else sh.appendRow(row);
     } finally { lock.releaseLock(); }
