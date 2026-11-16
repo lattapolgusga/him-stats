@@ -2,7 +2,6 @@
  * HIM Stats — ระบบหลังบ้าน (Google Apps Script)
  * วางไฟล์นี้ใน Extensions > Apps Script ของ Google Sheet กลาง
  * แล้วตั้ง Script Properties (Project Settings > Script properties):
- *   LOGIN_CHANNEL_ID   = Channel ID ของ LINE Login "HIM Stats App" (2012642298)
  *   LINE_ACCESS_TOKEN  = Channel access token ของ OA (สำหรับตอบแชท)
  *   CURRENT_ROUND      = รอบที่เปิดให้ส่ง เช่น 2026-Q4
  */
@@ -10,14 +9,15 @@ const SH = { REG: 'ทะเบียนคริสตจักร', STAT: 'ส
 const P = PropertiesService.getScriptProperties();
 const ss = () => SpreadsheetApp.getActiveSpreadsheet();
 
-/** รันครั้งเดียวหลังวางโค้ด: สร้างแท็บผู้ใช้/บันทึก และหัวคอลัมน์สถิติเพิ่ม */
+/** รันครั้งเดียวหลังวางโค้ด: สร้างแท็บผู้ใช้/บันทึก และหัวคอลัมน์สถิติ */
+const UHEAD = ['username','ชื่อ','บทบาท(leader/admin)','รหัสคริสตจักร(คั่นด้วย ,)','สถานะ(active/disabled)','สร้างเมื่อ','สร้างโดย','passwordHash','salt','lineUserId'];
 function setup() {
   const s = ss();
-  if (!s.getSheetByName(SH.USER)) s.insertSheet(SH.USER).appendRow(['lineUserId','ชื่อ LINE','บทบาท(leader/admin)','รหัสคริสตจักร(คั่นด้วย ,)','สถานะ(pending/active)','ขอเมื่อ','อนุมัติโดย']);
-  if (!s.getSheetByName(SH.LOG)) s.insertSheet(SH.LOG).appendRow(['เวลา','lineUserId','การกระทำ','รายละเอียด']);
-  const st = s.getSheetByName(SH.STAT);
-  st.getRange(1, 1, 1, 11).setValues([['รหัส','ชื่อ','ภาค','รอบ','จำนวนคน','ผู้มาใหม่','บัพติศมา','Life Group','อธิษฐาน/ข่าว','ส่งโดย','เวลาส่ง']]);
-  if (!P.getProperty('LOGIN_CHANNEL_ID')) P.setProperty('LOGIN_CHANNEL_ID', '2012642298');
+  let u = s.getSheetByName(SH.USER);
+  if (!u) u = s.insertSheet(SH.USER);
+  if (u.getRange(1, 1).getValue() !== 'username') { u.clear(); u.appendRow(UHEAD); }
+  if (!s.getSheetByName(SH.LOG)) s.insertSheet(SH.LOG).appendRow(['เวลา','ผู้ใช้','การกระทำ','รายละเอียด']);
+  s.getSheetByName(SH.STAT).getRange(1, 1, 1, 11).setValues([['รหัส','ชื่อ','ภาค','รอบ','จำนวนคน','ผู้มาใหม่','บัพติศมา','Life Group','อธิษฐาน/ข่าว','ส่งโดย','เวลาส่ง']]);
   if (!P.getProperty('CURRENT_ROUND')) P.setProperty('CURRENT_ROUND', '2026-Q4');
 }
 
@@ -29,19 +29,24 @@ function churches_() {
 function stats_() {
   return rows_(SH.STAT).filter(r => r[0]).map(r => ({ code: r[0], round: String(r[3]).slice(0, 7), n: Number(r[4]), nw: r[5], bp: r[6], lg: r[7] }));
 }
-function users_() { return rows_(SH.USER).map((r, i) => ({ row: i + 2, uid: r[0], name: r[1], role: r[2], codes: String(r[3]).split(',').map(x => x.trim()).filter(String), status: r[4] })); }
-function userOf_(uid) { return users_().find(u => u.uid === uid); }
-function log_(uid, act, d) { ss().getSheetByName(SH.LOG).appendRow([new Date(), uid, act, JSON.stringify(d)]); }
+function users_() {
+  return rows_(SH.USER).map((r, i) => ({ row: i + 2, username: String(r[0]).trim(), name: r[1], role: r[2], codes: String(r[3]).split(',').map(x => x.trim()).filter(String), status: r[4], hash: r[7], salt: r[8], lineUserId: r[9] })).filter(u => u.username);
+}
+function log_(who, act, d) { ss().getSheetByName(SH.LOG).appendRow([new Date(), who, act, JSON.stringify(d)]); }
+function pub_(u) { return { username: u.username, name: u.name, role: u.role, codes: u.codes, status: u.status, line: !!u.lineUserId }; }
 
-/* ---------- ยืนยันตัวตนด้วย LINE ID token ---------- */
-function verify_(idToken) {
-  const r = UrlFetchApp.fetch('https://api.line.me/oauth2/v2.1/verify', {
-    method: 'post', muteHttpExceptions: true,
-    payload: { id_token: idToken, client_id: P.getProperty('LOGIN_CHANNEL_ID') }
-  });
-  if (r.getResponseCode() !== 200) throw new Error('LINE login หมดอายุ กรุณาเปิดใหม่');
-  const j = JSON.parse(r.getContentText());
-  return { uid: j.sub, name: j.name };
+/* ---------- รหัสผ่านและ session ---------- */
+function hash_(pw, salt) { return Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, salt + '|' + pw, Utilities.Charset.UTF_8)); }
+function rand_(n) { const c = 'abcdefghjkmnpqrstuvwxyz23456789'; let s = ''; for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)]; return s; }
+function setPw_(u, pw) { const salt = Utilities.getUuid(); const sh = ss().getSheetByName(SH.USER); sh.getRange(u.row, 8, 1, 2).setValues([[hash_(pw, salt), salt]]); }
+const cache = () => CacheService.getScriptCache();
+function session_(token) {
+  const name = token && cache().get('s:' + token);
+  if (!name) throw new Error('SESSION');
+  cache().put('s:' + token, name, 21600);
+  const u = users_().find(x => x.username === name);
+  if (!u || u.status !== 'active') throw new Error('SESSION');
+  return u;
 }
 
 /* ---------- API สำหรับเว็บแอป ---------- */
@@ -55,42 +60,78 @@ function doPost(e) {
 function doGet() { return ContentService.createTextOutput('HIM Stats API ok'); }
 
 function api_(b) {
-  const me = verify_(b.idToken), u = userOf_(me.uid), round = P.getProperty('CURRENT_ROUND');
-  const C = churches_();
+  const lock = LockService.getScriptLock();
+  if (b.action === 'status') return { needsAdmin: !users_().some(u => u.role === 'admin' && u.hash) };
+  if (b.action === 'bootstrap') {                     // สร้างแอดมินคนแรก (ใช้ได้ครั้งเดียว)
+    if (users_().some(u => u.role === 'admin' && u.hash)) throw new Error('มีแอดมินแล้ว');
+    if (!b.username || String(b.password || '').length < 8) throw new Error('รหัสผ่านอย่างน้อย 8 ตัว');
+    ss().getSheetByName(SH.USER).appendRow([String(b.username).trim(), b.name || b.username, 'admin', '', 'active', new Date(), 'bootstrap', '', '', '']);
+    setPw_(users_().find(u => u.username === String(b.username).trim()), b.password);
+    log_(b.username, 'bootstrap', {});
+    b.action = 'login';
+  }
+  if (b.action === 'login') {
+    const key = 'f:' + String(b.username).toLowerCase(), fails = Number(cache().get(key) || 0);
+    if (fails >= 5) throw new Error('ใส่รหัสผิดหลายครั้ง กรุณารอ 10 นาที');
+    const u = users_().find(x => x.username.toLowerCase() === String(b.username || '').trim().toLowerCase());
+    if (!u || u.status !== 'active' || !u.hash || hash_(String(b.password || ''), u.salt) !== u.hash) {
+      cache().put(key, String(fails + 1), 600); throw new Error('username หรือรหัสผ่านไม่ถูกต้อง');
+    }
+    const token = Utilities.getUuid() + rand_(8);
+    cache().put('s:' + token, u.username, 21600); log_(u.username, 'login', {});
+    return { token };
+  }
+  const u = session_(b.token), round = P.getProperty('CURRENT_ROUND'), C = churches_();
+  const admin = u.role === 'admin';
   if (b.action === 'me') {
-    if (!u) return { state: 'new', name: me.name, round };
-    if (u.status !== 'active') return { state: 'pending', name: me.name, round };
-    const mine = u.role === 'admin' ? [] : C.filter(c => u.codes.includes(c.code));
-    const S = stats_().filter(s => u.role === 'admin' || u.codes.includes(s.code));
-    return { state: 'active', role: u.role, name: me.name, round, churches: u.role === 'admin' ? C : mine, stats: S };
+    const S = stats_().filter(s => admin || u.codes.includes(s.code));
+    return { user: pub_(u), round, churches: admin ? C : C.filter(c => u.codes.includes(c.code)), stats: S };
   }
-  if (b.action === 'request') {                       // ผูกบัญชีครั้งแรก
-    if (u) throw new Error('ส่งคำขอไปแล้ว รอแอดมินอนุมัติ');
-    const code = String(b.code || '').trim().toUpperCase();
-    if (!C.find(c => c.code === code)) throw new Error('ไม่พบรหัสคริสตจักรนี้');
-    ss().getSheetByName(SH.USER).appendRow([me.uid, me.name, 'leader', code, 'pending', new Date(), '']);
-    log_(me.uid, 'request', { code });
-    return { state: 'pending' };
+  if (b.action === 'logout') { cache().remove('s:' + b.token); return {}; }
+  if (b.action === 'password') {
+    if (hash_(String(b.old || ''), u.salt) !== u.hash) throw new Error('รหัสผ่านเดิมไม่ถูกต้อง');
+    if (String(b.password || '').length < 8) throw new Error('รหัสผ่านใหม่อย่างน้อย 8 ตัว');
+    setPw_(u, b.password); log_(u.username, 'password', {}); return {};
   }
-  if (!u || u.status !== 'active') throw new Error('บัญชียังไม่ได้รับอนุมัติ');
+  if (b.action === 'linkcode') {                       // รหัสเชื่อม LINE OA
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    cache().put('l:' + code, u.username, 600); return { code };
+  }
   if (b.action === 'submit') {
     const c = C.find(x => x.code === b.code);
-    if (!c || (u.role !== 'admin' && !u.codes.includes(b.code))) throw new Error('ไม่มีสิทธิ์ส่งข้อมูลคริสตจักรนี้');
-    const n = Number(b.n); if (!(n >= 0)) throw new Error('จำนวนคนไม่ถูกต้อง');
-    const sh = ss().getSheetByName(SH.STAT), v = sh.getDataRange().getValues();
-    const row = [c.code, c.name, c.reg, round, n, b.nw || '', b.bp || '', b.lg || '', b.note || '', me.name, new Date()];
-    const i = v.findIndex(r => r[0] === c.code && String(r[3]).slice(0, 7) === round);
-    if (i > 0) sh.getRange(i + 1, 1, 1, row.length).setValues([row]); else sh.appendRow(row);
-    log_(me.uid, 'submit', { code: c.code, round, n });
+    if (!c || (!admin && !u.codes.includes(b.code))) throw new Error('ไม่มีสิทธิ์ส่งข้อมูลคริสตจักรนี้');
+    const n = Number(b.n); if (!(n >= 0) || b.n === '' || b.n == null) throw new Error('จำนวนคนไม่ถูกต้อง');
+    lock.waitLock(20000);
+    try {
+      const sh = ss().getSheetByName(SH.STAT), v = sh.getDataRange().getValues();
+      const row = [c.code, c.name, c.reg, round, n, b.nw || '', b.bp || '', b.lg || '', b.note || '', u.name || u.username, new Date()];
+      const i = v.findIndex(r => r[0] === c.code && String(r[3]).slice(0, 7) === round);
+      if (i > 0) sh.getRange(i + 1, 1, 1, row.length).setValues([row]); else sh.appendRow(row);
+    } finally { lock.releaseLock(); }
+    log_(u.username, 'submit', { code: c.code, round, n });
     return { saved: true };
   }
-  if (b.action === 'pending' && u.role === 'admin') return users_().filter(x => x.status === 'pending');
-  if (b.action === 'approve' && u.role === 'admin') {
-    const t = users_().find(x => x.uid === b.uid); if (!t) throw new Error('ไม่พบผู้ใช้');
-    const us = ss().getSheetByName(SH.USER);
-    us.getRange(t.row, 5).setValue('active'); us.getRange(t.row, 7).setValue(me.name);
-    log_(me.uid, 'approve', { uid: b.uid });
-    return { approved: true };
+  if (!admin) throw new Error('ต้องเป็นแอดมิน');
+  if (b.action === 'users') return users_().map(pub_);
+  if (b.action === 'createUser') {
+    const name = String(b.username || '').trim();
+    if (!/^[A-Za-z0-9_.-]{3,30}$/.test(name)) throw new Error('username ใช้ a-z 0-9 . _ - (3–30 ตัว)');
+    if (users_().some(x => x.username.toLowerCase() === name.toLowerCase())) throw new Error('username นี้มีแล้ว');
+    const codes = String(b.codes || '').toUpperCase().split(',').map(x => x.trim()).filter(String);
+    codes.forEach(k => { if (!C.find(c => c.code === k)) throw new Error('ไม่พบรหัส ' + k); });
+    ss().getSheetByName(SH.USER).appendRow([name, b.name || name, b.role === 'admin' ? 'admin' : 'leader', codes.join(','), 'active', new Date(), u.username, '', '', '']);
+    const pw = rand_(10); setPw_(users_().find(x => x.username === name), pw);
+    log_(u.username, 'createUser', { name, codes }); return { username: name, password: pw };
+  }
+  if (b.action === 'resetPassword') {
+    const t = users_().find(x => x.username === b.username); if (!t) throw new Error('ไม่พบผู้ใช้');
+    const pw = rand_(10); setPw_(t, pw); log_(u.username, 'resetPassword', { user: t.username }); return { username: t.username, password: pw };
+  }
+  if (b.action === 'setStatus') {
+    const t = users_().find(x => x.username === b.username); if (!t) throw new Error('ไม่พบผู้ใช้');
+    if (t.username === u.username) throw new Error('ปิดบัญชีตัวเองไม่ได้');
+    ss().getSheetByName(SH.USER).getRange(t.row, 5).setValue(b.status === 'active' ? 'active' : 'disabled');
+    log_(u.username, 'setStatus', { user: t.username, status: b.status }); return {};
   }
   throw new Error('คำสั่งไม่ถูกต้อง');
 }
@@ -99,10 +140,15 @@ function api_(b) {
 function webhook_(body) {
   body.events.forEach(ev => {
     if (ev.type !== 'message' || ev.message.type !== 'text') return;
-    const u = userOf_(ev.source.userId);
-    let text;
-    if (!u || u.status !== 'active') text = 'สวัสดีครับ 🙏 กดเมนู "อัปเดทสถิติ" เพื่อลงทะเบียนคริสตจักรของท่าน';
-    else text = answer_(ev.message.text, u);
+    const q = ev.message.text.trim(), uid = ev.source.userId;
+    let text, u = users_().find(x => x.lineUserId === uid && x.status === 'active');
+    const m = q.match(/^(เชื่อม|link)\s*(\d{6})$/i);
+    if (m) {
+      const name = cache().get('l:' + m[2]); const t = name && users_().find(x => x.username === name);
+      if (!t) text = 'รหัสไม่ถูกต้องหรือหมดอายุ กรุณาขอรหัสใหม่จากเว็บแอป (เมนู บัญชีของฉัน)';
+      else { ss().getSheetByName(SH.USER).getRange(t.row, 10).setValue(uid); cache().remove('l:' + m[2]); log_(t.username, 'linkLine', {}); text = `เชื่อมบัญชี ${t.name || t.username} เรียบร้อยแล้ว 🙏\nถามข้อมูลได้เลย เช่น "สรุปภาพรวม"`; }
+    } else if (!u) text = 'สวัสดีครับ 🙏 งานพันธกิจ H.I.M.\nหากต้องการถามข้อมูลสถิติ กรุณาเชื่อมบัญชีก่อน: เข้าเว็บแอป → บัญชีของฉัน → "รหัสเชื่อม LINE" แล้วพิมพ์ เชื่อม ตามด้วยรหัส 6 หลักที่นี่';
+    else text = answer_(q, u);
     reply_(ev.replyToken, text);
   });
   return ContentService.createTextOutput('ok');

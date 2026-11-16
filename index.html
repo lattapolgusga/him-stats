@@ -21,7 +21,7 @@ label{display:block;font-size:13px;color:var(--m);margin:10px 0 4px}.row{display
 .me{background:#06C755;color:#fff;margin-left:auto}.bot{background:#fff}.chips button{margin:4px 4px 0 0;font-size:12px;padding:5px 10px}
 .note{font-size:12px;color:var(--m)}.hide{display:none}
 </style>
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script src="config.js"></script></head><body>
+<script src="config.js"></script></head><body>
 <header><b>⛪ H.I.M. Thailand · ระบบสถิติ</b><span class="sp"></span><span class="tabs" id="tabs"></span><span id="who" style="font-size:13px"></span></header>
 <main id="app"><div class="card login">กำลังโหลด…</div></main>
 <script>
@@ -29,25 +29,34 @@ const CFG=window.HIM_CONFIG;const A=()=>document.getElementById('app');
 const esc=s=>String(s??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const sum=(a,f)=>a.reduce((s,x)=>s+(f(x)||0),0);const RL=r=>r;
 let ME=null,view='',cur=null,BY={},ROUNDS=[];
-async function api(action,extra={}){const r=await fetch(CFG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,idToken:liff.getIDToken(),...extra})});const j=await r.json();if(!j.ok)throw new Error(j.error);return j.data}
+let TOKEN=null;try{TOKEN=localStorage.getItem('him_t')}catch(e){}
+async function api(action,extra={}){const r=await fetch(CFG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,token:TOKEN,...extra})});const j=await r.json();
+ if(!j.ok){if(j.error=='SESSION'){setT(null);loginV();throw new Error('กรุณาเข้าสู่ระบบใหม่')}throw new Error(j.error)}return j.data}
+function setT(t){TOKEN=t;try{t?localStorage.setItem('him_t',t):localStorage.removeItem('him_t')}catch(e){}}
 function err(e){A().innerHTML=`<div class="card login"><p class="dn">${esc(e.message||e)}</p><button onclick="location.reload()">ลองใหม่</button></div>`}
-async function boot(){try{
- await Promise.race([liff.init({liffId:CFG.LIFF_ID}),new Promise(r=>setTimeout(r,8000))]);
- if(!liff.isLoggedIn())return liff.login({redirectUri:location.origin+location.pathname});
- if(location.search)history.replaceState(null,'',location.pathname);
- A().innerHTML='<div class="card login">กำลังโหลดข้อมูล…</div>';await load()}catch(e){err(e)}}
-async function load(){ME=await api('me');document.getElementById('who').textContent='👤 '+ME.name;
- if(ME.state=='new')return regV();if(ME.state=='pending')return A().innerHTML=`<div class="card login"><div style="font-size:40px">⏳</div><h3>รอแอดมินอนุมัติ</h3><p class="note">เมื่ออนุมัติแล้ว LINE OA จะแจ้งให้ทราบ</p></div>`;
+async function boot(){try{if(TOKEN)return await load();const st=await api('status');st.needsAdmin?bootV():loginV()}catch(e){if(document.getElementById('lu'))return;err(e)}}
+function loginV(msg){document.getElementById('tabs').innerHTML='';document.getElementById('who').textContent='';
+ A().innerHTML=`<form class="card login" onsubmit="event.preventDefault();doLogin()"><div style="font-size:40px">⛪</div><h3>เข้าสู่ระบบ</h3>
+ <input id="lu" placeholder="username" autocomplete="username"><input id="lp" type="password" placeholder="รหัสผ่าน" autocomplete="current-password" style="margin-top:8px">
+ <button id="lb" style="width:100%;margin-top:12px">เข้าสู่ระบบ</button><div id="lm">${msg?`<p class="dn">${esc(msg)}</p>`:''}</div><p class="note">ลืมรหัสผ่าน ติดต่อแอดมินส่วนกลาง</p></form>`}
+async function doLogin(){lb.disabled=true;lb.textContent='กำลังตรวจสอบ…';try{const r=await api('login',{username:lu.value,password:lp.value});setT(r.token);await load()}catch(e){lm.innerHTML=`<p class="dn">${esc(e.message)}</p>`;lb.disabled=false;lb.textContent='เข้าสู่ระบบ'}}
+function bootV(){A().innerHTML=`<form class="card login" onsubmit="event.preventDefault();doBoot()"><h3>ตั้งค่าแอดมินคนแรก</h3><p class="note">ทำครั้งเดียว หลังจากนี้แอดมินสร้างบัญชีให้คนอื่นในระบบ</p>
+ <input id="bn" placeholder="ชื่อที่แสดง"><input id="lu" placeholder="username (a-z 0-9)" style="margin-top:8px"><input id="lp" type="password" placeholder="รหัสผ่าน (อย่างน้อย 8 ตัว)" style="margin-top:8px">
+ <button id="lb" style="width:100%;margin-top:12px">สร้างแอดมิน</button><div id="lm"></div></form>`}
+async function doBoot(){try{const r=await api('bootstrap',{name:bn.value,username:lu.value,password:lp.value});setT(r.token);await load()}catch(e){lm.innerHTML=`<p class="dn">${esc(e.message)}</p>`}}
+async function load(){A().innerHTML='<div class="card login">กำลังโหลดข้อมูล…</div>';ME=await api('me');ME.role=ME.user.role;ME.name=ME.user.name;
+ document.getElementById('who').innerHTML='👤 '+esc(ME.name)+' <button class="sec" style="padding:4px 10px;margin-left:6px" onclick="logout()">ออก</button>';
  BY={};ME.stats.forEach(s=>(BY[s.code]=BY[s.code]||{})[s.round]=s.n);ROUNDS=[...new Set(ME.stats.map(s=>s.round).concat([ME.round]))].sort();
- cur=ME.churches[0];view=ME.role=='admin'?'dash':'form';render()}
+ cur=ME.churches[0];view=ME.role=='admin'?'dash':(cur?'form':'acct');render()}
+async function logout(){try{await api('logout')}catch(e){}setT(null);loginV()}
 const val=(c,r)=>(BY[c.code]||{})[r];const latest=c=>{for(let i=ROUNDS.length-1;i>=0;i--)if(val(c,ROUNDS[i])!=null)return val(c,ROUNDS[i]);return null};
 const prevOf=c=>{let f=0;for(let i=ROUNDS.length-1;i>=0;i--)if(val(c,ROUNDS[i])!=null){if(f)return val(c,ROUNDS[i]);f=1}return null};
 const size=v=>v==null?'':v<30?'XS':v<=50?'S':v<=100?'M':'L';
 function regV(){A().innerHTML=`<div class="card login"><h3>ลงทะเบียนครั้งแรก</h3><p class="note">ใส่รหัสคริสตจักรที่ได้รับจากผู้ดูแลภาค (เช่น N1-001)</p><input id="cc" placeholder="รหัสคริสตจักร"><button style="width:100%;margin-top:10px" onclick="reqB()">ส่งคำขอ</button><div id="m"></div></div>`}
 async function reqB(){try{await api('request',{code:cc.value});load()}catch(e){m.innerHTML=`<p class="dn">${esc(e.message)}</p>`}}
-function render(){const tabs=ME.role=='admin'?[['dash','แดชบอร์ด'],['list','ทะเบียน'],['appr','อนุมัติผู้ใช้']]:[['form','กรอกสถิติ'],['mine','ข้อมูลของฉัน']];
+function render(){const tabs=ME.role=='admin'?[['dash','แดชบอร์ด'],['list','ทะเบียน'],['users','ผู้ใช้'],['acct','บัญชีของฉัน']]:[['form','กรอกสถิติ'],['mine','ข้อมูลของฉัน'],['acct','บัญชีของฉัน']];
  document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button class="${view==k?'on':''}" onclick="view='${k}';render()">${l}</button>`).join('');
- ({dash:dashV,list:listV,appr:apprV,form:formV,mine:mineV})[view]()}
+ ({dash:dashV,list:listV,users:usersV,acct:acctV,form:formV,mine:mineV})[view]()}
 function formV(){const c=cur;A().innerHTML=`<div class="card" style="max-width:520px;margin:auto">${ME.churches.length>1?`<label>คริสตจักรที่ดูแล</label><select onchange="cur=ME.churches.find(x=>x.code==this.value);render()">${ME.churches.map(x=>`<option ${x==c?'selected':''} value="${x.code}">${esc(x.name)}</option>`).join('')}</select>`:''}
  <h3 style="margin:10px 0 2px">${esc(c.name)}</h3><div class="note">${c.code} · ${esc(c.reg)} · ${esc(c.type)}</div><h4>ส่งสถิติรอบ ${ME.round} ${val(c,ME.round)!=null?'<span class="tag M">ส่งแล้ว</span>':''}</h4>
  <label>จำนวนคนมานมัสการ (เฉลี่ย) *</label><input id="f1" type="number" min="0" inputmode="numeric" value="${val(c,ME.round)??''}" placeholder="ครั้งก่อน ${latest(c)??'-'} คน">
@@ -67,7 +76,19 @@ let F={q:'',reg:'',ns:false};
 function listV(){const REGS=[...new Set(ME.churches.map(c=>c.reg))].sort();A().innerHTML=`<div class="card"><div class="row"><div><label>ค้นหา</label><input oninput="F.q=this.value;tbl()" value="${esc(F.q)}"></div><div><label>ภาค</label><select onchange="F.reg=this.value;tbl()"><option value="">ทุกภาค</option>${REGS.map(g=>`<option ${F.reg==g?'selected':''}>${esc(g)}</option>`).join('')}</select></div><div><label><input type="checkbox" style="width:auto" onchange="F.ns=this.checked;tbl()" ${F.ns?'checked':''}> ยังไม่ส่ง</label></div></div><p class="note" id="cnt"></p><div class="tw" id="tb"></div></div>`;tbl()}
 function tbl(){const q=F.q.toLowerCase(),a=ME.churches.filter(c=>(!q||(c.name+c.leader+c.code).toLowerCase().includes(q))&&(!F.reg||c.reg==F.reg)&&(!F.ns||val(c,ME.round)==null));
  cnt.textContent=a.length+' แห่ง';tb.innerHTML=`<table><tr><th>รหัส</th><th>ชื่อ</th><th>ภาค</th><th>ผู้นำ</th>${ROUNDS.map(r=>`<th>${r}</th>`).join('')}<th>ขนาด</th></tr>${a.map(c=>`<tr><td>${c.code}</td><td>${esc(c.name)}</td><td>${esc(c.reg)}</td><td>${esc(c.leader)}</td>${ROUNDS.map(r=>`<td>${val(c,r)??'–'}</td>`).join('')}<td>${size(latest(c))?`<span class="tag ${size(latest(c))}">${size(latest(c))}</span>`:''}</td></tr>`).join('')}</table>`}
-async function apprV(){A().innerHTML='<div class="card">กำลังโหลด…</div>';try{const p=await api('pending');A().innerHTML=`<div class="card"><h3>คำขอรออนุมัติ (${p.length})</h3><table>${p.map(u=>{const c=ME.churches.find(x=>x.code==u.codes[0]);return `<tr><td>${esc(u.name)}</td><td>${esc(u.codes.join(','))} ${c?esc(c.name):''}</td><td><button onclick="appr('${esc(u.uid)}',this)">อนุมัติ</button></td></tr>`}).join('')||'<tr><td class="note">ไม่มีคำขอ</td></tr>'}</table><p class="note">เพิ่มสิทธิ์หลายคริสตจักร หรือตั้งเป็นแอดมิน แก้ได้ในแท็บ "ผู้ใช้" ของ Google Sheet</p></div>`}catch(e){err(e)}}
-async function appr(uid,b){b.disabled=true;try{await api('approve',{uid});b.textContent='อนุมัติแล้ว'}catch(e){b.textContent=e.message}}
+async function usersV(){A().innerHTML='<div class="card">กำลังโหลด…</div>';try{const U=await api('users');
+ A().innerHTML=`<div class="grid2"><form class="card" onsubmit="event.preventDefault();mkU()"><h3>สร้างบัญชีใหม่</h3>
+ <label>username</label><input id="nu" placeholder="เช่น n1-001 หรือ somchai"><label>ชื่อที่แสดง</label><input id="nn">
+ <label>รหัสคริสตจักรที่ดูแล (คั่นด้วย , )</label><input id="nc" placeholder="N1-001,N1-002"><label>บทบาท</label><select id="nr"><option value="leader">ผู้นำคริสตจักร</option><option value="admin">แอดมิน</option></select>
+ <button style="width:100%;margin-top:12px">สร้างบัญชี</button><div id="um"></div></form>
+ <div class="card"><h3>บัญชีทั้งหมด (${U.length})</h3><div class="tw"><table><tr><th>username</th><th>ชื่อ</th><th>คจ.</th><th>LINE</th><th></th></tr>${U.map(u=>`<tr><td>${esc(u.username)}${u.role=='admin'?' <span class="tag L">admin</span>':''}</td><td>${esc(u.name)}</td><td>${esc(u.codes.join(', '))}</td><td>${u.line?'✅':''}</td><td style="white-space:nowrap"><button class="sec" onclick="rsP('${esc(u.username)}')">รีเซ็ตรหัส</button> <button class="sec" onclick="stU('${esc(u.username)}','${u.status=='active'?'disabled':'active'}')">${u.status=='active'?'ปิด':'เปิด'}</button></td></tr>`).join('')}</table></div></div></div>`}catch(e){err(e)}}
+function showPw(r){return `<div class="ok">✅ username: <b>${esc(r.username)}</b><br>รหัสผ่านชั่วคราว: <b>${esc(r.password)}</b><br><span class="note">แสดงครั้งเดียว ส่งให้เจ้าของบัญชีแบบส่วนตัว และให้เปลี่ยนรหัสหลังเข้าระบบ</span></div>`}
+async function mkU(){try{const r=await api('createUser',{username:nu.value,name:nn.value,codes:nc.value,role:nr.value});await usersV();um.innerHTML=showPw(r)}catch(e){um.innerHTML=`<p class="dn">${esc(e.message)}</p>`}}
+async function rsP(u){try{const r=await api('resetPassword',{username:u});await usersV();um.innerHTML=showPw(r)}catch(e){um.innerHTML=`<p class="dn">${esc(e.message)}</p>`}}
+async function stU(u,st){try{await api('setStatus',{username:u,status:st});usersV()}catch(e){um.innerHTML=`<p class="dn">${esc(e.message)}</p>`}}
+function acctV(){A().innerHTML=`<div class="grid2"><form class="card" onsubmit="event.preventDefault();chP()"><h3>เปลี่ยนรหัสผ่าน</h3><label>รหัสผ่านเดิม</label><input id="po" type="password"><label>รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)</label><input id="pn" type="password"><button style="width:100%;margin-top:12px">บันทึก</button><div id="pm"></div></form>
+ <div class="card"><h3>เชื่อม LINE OA (เลขา)</h3><p class="note">เพื่อถามข้อมูลสถิติผ่านแชท LINE OA "งานพันธกิจ H.I.M."</p><button onclick="lnk()">ขอรหัสเชื่อม</button><div id="lk"></div></div></div>`}
+async function chP(){try{await api('password',{old:po.value,password:pn.value});pm.innerHTML='<div class="ok">✅ เปลี่ยนรหัสผ่านแล้ว</div>';po.value=pn.value=''}catch(e){pm.innerHTML=`<p class="dn">${esc(e.message)}</p>`}}
+async function lnk(){try{const r=await api('linkcode');lk.innerHTML=`<div class="ok">พิมพ์ในแชท OA ว่า<br><b style="font-size:22px">เชื่อม ${r.code}</b><br><span class="note">รหัสใช้ได้ 10 นาที</span></div>`}catch(e){lk.innerHTML=`<p class="dn">${esc(e.message)}</p>`}}
 boot();
 </script></body></html>
