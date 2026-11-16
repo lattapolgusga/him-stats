@@ -65,7 +65,7 @@ function render(){const TB={admin:[['exec','ภาพรวมผู้บริ
 const AGD=['ย้ำนิมิตองค์กรฮิม ภาค คริสตจักร','ทบทวนเป้าหมายประจำเดือน','สถิติการเติบโต (เพิ่มพูน/อภิบาล/พัฒนา)','โครงการ 111 / งานประกาศ','สอนพระคัมภีร์','รายงานการถวายทรัพย์','สะท้อนปัญหา / แนวทางแก้','อธิษฐานเผื่อกัน','อื่นๆ'];
 const RS={r6:{t:'แผน 111 (ไตรมาส 3-4)',fix:['การประกาศของ คจ ภายในภาค','LG','กลุ่มบุกเบิก','ศูนย์','คริสตจักร'],c:[['สิ่งที่ตั้งใจเปิด','f'],['จำนวน (แห่ง)','n'],['ชื่อผู้นำ'],['กำหนดเปิด','d'],['สิ่งที่ต้องการสนับสนุน'],['ประเมินผล Q3']]},
  r5:{t:'Best Practice & Pain Point',fix:[['Best Practice',1],['Best Practice',2],['Best Practice',3],['Pain Point',1],['Pain Point',2],['Pain Point',3]],c:[['ประเภท','f'],['ลำดับ','f'],['รายละเอียด','l']]},
- r4:{t:'ผลการดำเนินงาน ไตรมาส 3',c:[['เป้าหมายไตรมาส 3','l'],['ผลลัพธ์','l'],['กิจกรรม/การประกาศ','l'],['ลิงก์ภาพ']]},
+ r4:{t:'ผลการดำเนินงาน ไตรมาส 3',c:[['สิ่งที่ตั้งใจไตรมาส 3','l'],['ผลลัพธ์','l'],['กิจกรรม/การประกาศ','l'],['ลิงก์ภาพ']]},
  r2:{t:'แผนสถาบัน Youth',c:[['จังหวัด'],['มหาวิทยาลัย/วิทยาลัย'],['แผนการประกาศ','l'],['แผนการสร้างสาวก','l']]},
  r8:{t:'ประชุมดาวิดภาค',c:[['วันที่ประชุม','d']].concat(AGD.map(x=>[x,'c'])).concat([['รายละเอียดเพิ่มเติม','l']])}};
 let RP=null,RG='',RTp='r6',RR={};
@@ -88,19 +88,19 @@ function cur4(C){const R=ME.round,codes=new Set(C.map(c=>c.code)),SR=ME.stats.fi
  const lastS=c=>{const a=ME.stats.filter(s=>s.code==c.code).sort((a,b)=>a.round<b.round?1:-1);return a[0]};
  return{SR,att:sum(C,latest),tgt:X('tgt'),lg:C.reduce((t,c)=>t+(+(lastS(c)||{}).lg||0),0),tlg:X('tlg'),nb:X('nb'),tnb:X('tnb'),sub:SR.length,n:C.length,p111:C.filter(c=>c.p111).length}}
 function pg(l,v,t,col){const p=t?Math.min(100,Math.round(v/t*100)):0,c=col||(p>=100?'#2e7d32':p>=60?'#2b6cb0':p>=30?'#d69e2e':'#c0392b');
- return `<div class="pg"><div class="h"><span>${l}</span><b>${(+v||0).toLocaleString()}${t?` / ${t.toLocaleString()} <span style="color:${c}">(${p}%)</span>`:' <span class="note">· ยังไม่ตั้งเป้า</span>'}</b></div><div class="t"><div class="f" style="width:${t?p:0}%;background:${c}"></div></div></div>`}
+ return `<div class="pg"><div class="h"><span>${l}</span><b>${(+v||0).toLocaleString()}${t?` / ${t.toLocaleString()} <span style="color:${c}">(${p}%)</span>`:' <span class="note">· ยังไม่ได้ระบุ</span>'}</b></div><div class="t"><div class="f" style="width:${t?p:0}%;background:${c}"></div></div></div>`}
 function strip(){if(!ME||!ME.churches)return'';const C=ME.churches,q=cur4(C),T=scopeT(C),one=C.length==1;
  const scope=one?esc(C[0].name):ME.role=='coord'?'ภาคของฉัน':['admin','exec'].includes(ME.role)?'H.I.M. Thailand ทั้งองค์กร':'คริสตจักรของฉัน';
- return `<div class="card" style="padding:0"><div style="padding:10px 16px 0;display:flex;justify-content:space-between;flex-wrap:wrap"><b>📊 สถิติล่าสุด · ${scope}</b><span class="note">รอบ ${ME.round} · ส่งแล้ว ${q.sub}/${q.n} แห่ง</span></div><div class="strip">
- <div>${pg('ยอดนมัสการ (ล่าสุด / เป้า Q4)',q.att,q.tgt)}</div><div>${pg('Life Group (ล่าสุด / เป้า Q4)',q.lg,q.tlg)}</div><div>${pg('ผู้เชื่อใหม่ (รอบนี้ / เป้า Q4)',q.nb,q.tnb)}</div>
- ${one?'':`<div>${pg('ส่งสถิติรอบนี้',q.sub,q.n)}</div><div>${pg('เข้าโครงการ 111 / เป้าองค์กร 2026',q.p111,T.t111)}</div><div>${pg('LG ล่าสุด / เป้าองค์กร 2026',q.lg,T.tlg)}</div>`}</div></div>`}
+ return `<div class="card" style="padding:0"><div style="padding:10px 16px 0;display:flex;justify-content:space-between;flex-wrap:wrap"><b>💚 สุขภาพคริสตจักร · ${scope}</b><span class="note">รอบ ${ME.round} · ส่งแล้ว ${q.sub}/${q.n} แห่ง</span></div><div class="strip">
+ <div>${pg('ยอดนมัสการ (ล่าสุด / ที่ตั้งใจ Q4)',q.att,q.tgt)}</div><div>${pg('Life Group (ล่าสุด / ที่ตั้งใจ Q4)',q.lg,q.tlg)}</div><div>${pg('ผู้เชื่อใหม่ (รอบนี้ / ที่ตั้งใจ Q4)',q.nb,q.tnb)}</div>
+ ${one?'':`<div>${pg('ส่งสถิติรอบนี้',q.sub,q.n)}</div><div>${pg('เข้าโครงการ 111 / ที่ตั้งใจทั้งองค์กร 2026',q.p111,T.t111)}</div><div>${pg('LG ล่าสุด / ที่ตั้งใจทั้งองค์กร 2026',q.lg,T.tlg)}</div>`}</div></div>`}
 function donut(parts){const t=parts.reduce((a,p)=>a+p[1],0)||1;let acc=0;const g=parts.map(([l,v,c])=>{const s=acc/t*360;acc+=v;return `${c} ${s}deg ${acc/t*360}deg`}).join(',');
  return `<div style="display:flex;gap:16px;align-items:center"><div class="donut" style="background:conic-gradient(${g})"></div><div class="leg">${parts.map(([l,v,c])=>`<div><span><i style="background:${c}"></i>${l} <b>${v}</b> (${Math.round(v/t*100)}%)</span></div>`).join('')}</div></div>`}
 function targetsCard(C){const T=ME.targets||{},q=cur4(C),O=scopeT(C);const regs=[...new Set(C.map(c=>c.reg))].sort();
  const rq=g=>{const a=C.filter(c=>c.reg==g),x=cur4(a),t=T[nz(g)]||{};return[g,x,t]};
- return `<div class="card"><h3>🎯 เป้าหมายองค์กร H.I.M. Thailand ปี 2026 (รวมทุกภาคในขอบเขต)</h3><div class="strip" style="padding:0">${pg('เข้าโครงการ 111',q.p111,O.t111)}${pg('Life Group',q.lg,O.tlg)}${pg('ยอดนมัสการ / เป้า Q4',q.att,q.tgt)}</div>
- <p class="note">เป้าเปิดใหม่ปี 2026: กลุ่มบุกเบิก <b>${O.tpio}</b> · ศูนย์ <b>${O.tcen}</b> · คริสตจักร <b>${O.tch}</b></p></div>
- <div class="card"><h3>🎯 เป้าหมาย Q4 รายภาค</h3><div class="tw"><table><tr><th>ภาค</th><th>ยอดนมัสการ / เป้า Q4</th><th>LG / เป้า Q4</th><th>LG / เป้าปี</th><th>111 / เป้าปี</th><th>ส่งแล้ว</th></tr>${regs.map(rq).map(([g,x,t])=>{const pc=(a,b)=>b?`${a}/${b} <span class="note">${Math.round(a/b*100)}%</span>`:`${a}/–`;return `<tr><td>${esc(g)}</td><td>${pc(x.att,x.tgt)}</td><td>${pc(x.lg,x.tlg)}</td><td>${pc(x.lg,t.tlg||0)}</td><td>${pc(x.p111,t.t111||0)}</td><td>${x.sub}/${x.n}</td></tr>`}).join('')}</table></div></div>`}
+ return `<div class="card"><h3>💚 สุขภาพคริสตจักร H.I.M. Thailand ปี 2026</h3><div class="strip" style="padding:0">${pg('เข้าโครงการ 111',q.p111,O.t111)}${pg('Life Group',q.lg,O.tlg)}${pg('ยอดนมัสการ / ที่ตั้งใจ Q4',q.att,q.tgt)}</div>
+ <p class="note">ที่ตั้งใจเปิดใหม่ปี 2026: กลุ่มบุกเบิก <b>${O.tpio}</b> · ศูนย์ <b>${O.tcen}</b> · คริสตจักร <b>${O.tch}</b></p></div>
+ <div class="card"><h3>💚 สุขภาพคริสตจักรรายภาค Q4</h3><div class="tw"><table><tr><th>ภาค</th><th>ยอดนมัสการ / ที่ตั้งใจ Q4</th><th>LG / ที่ตั้งใจ Q4</th><th>LG / ที่ตั้งใจทั้งปี</th><th>111 / ที่ตั้งใจทั้งปี</th><th>ส่งแล้ว</th></tr>${regs.map(rq).map(([g,x,t])=>{const pc=(a,b)=>b?`${a}/${b} <span class="note">${Math.round(a/b*100)}%</span>`:`${a}/–`;return `<tr><td>${esc(g)}</td><td>${pc(x.att,x.tgt)}</td><td>${pc(x.lg,x.tlg)}</td><td>${pc(x.lg,t.tlg||0)}</td><td>${pc(x.p111,t.t111||0)}</td><td>${x.sub}/${x.n}</td></tr>`}).join('')}</table></div></div>`}
 function sizeDonut(C){const L=latest,a=C.map(L).filter(v=>v!=null);return donut([['XS <30',a.filter(v=>v<30).length,'#e57373'],['S 30-50',a.filter(v=>v>=30&&v<=50).length,'#ffb74d'],['M 51-100',a.filter(v=>v>50&&v<=100).length,'#64b5f6'],['L 101+',a.filter(v=>v>100).length,'#43a047']])}
 async function execV(){const C=ME.churches,R=ME.round,L=latest,isK=c=>/คจ|คริสตจักร/.test(c.type);
  const K=C.filter(isK),std=K.filter(c=>L(c)>=30).length,subN=C.filter(c=>val(c,R)!=null).length,tot=sum(C,L);
@@ -138,7 +138,7 @@ function formV(){const c=cur,P=prevS(c),X=P.x||{},nv=k=>X[k]??'';const ni=(k,l)=
  ${grid(NUM1)}<div class="g3"><div><label>ผู้มาใหม่</label><input id="f2" type="number" min="0" value="${P.nw??''}"></div><div><label>บัพติศมา</label><input id="f3" type="number" min="0" value="${P.bp??''}"></div><div><label>จำนวน LG</label><input id="f4" type="number" min="0" value="${P.lg??''}"></div></div></div>
  <div class="sec2"><h4>② กลุ่มคนคล้าย (จำนวนคนแต่ละช่วงวัย)</h4>${grid(AGE)}<p class="note">รวม <b id="agt">0</b> คน</p></div>
  <div class="sec2"><h4>③ Checklist คริสตจักรมาตรฐาน</h4><div class="cks">${CK.map(cb).join('')}</div><div class="note" style="margin:4px 0 0 26px">ทีม WAM: ${WAM.map(([k,l])=>`<label class="ck" style="display:inline-flex;margin-right:12px"><input class="xc" data-k="${k}" type="checkbox" ${X[k]?'checked':''}> ${l}</label>`).join('')}</div><p class="note">ผ่าน <b id="ckt">0</b> / 8 ข้อ</p></div>
- <div class="sec2"><h4>④ เป้าหมายไตรมาส 4</h4>${grid([['tgt','เป้ายอดนมัสการ (คน)'],['tlg','เป้าจำนวน LG'],['tnb','เป้าผู้เชื่อใหม่']])}</div>
+ <div class="sec2"><h4>④ สุขภาพคริสตจักร: สิ่งที่ตั้งใจในไตรมาส 4</h4>${grid([['tgt','ยอดนมัสการที่ตั้งใจ (คน)'],['tlg','จำนวน LG ที่ตั้งใจ'],['tnb','ผู้เชื่อใหม่ที่ตั้งใจ']])}</div>
  <div class="sec2"><label>เรื่องอธิษฐาน / ข่าว</label><input id="f5" value="${esc(P.note||'')}"></div>
  <button id="sb" style="width:100%;margin-top:14px" onclick="sub()">ส่งสถิติ</button><div id="fm"></div></div>`;
  const upd=()=>{agt.textContent=AGE.reduce((t,[k])=>t+(+document.querySelector(`.xn[data-k=${k}]`).value||0),0);ckt.textContent=CK.filter(([k])=>document.querySelector(`.xc[data-k=${k}]`).checked).length};
