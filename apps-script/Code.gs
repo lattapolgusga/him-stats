@@ -17,6 +17,7 @@ function setup() {
   if (!s.getSheetByName(SH.LOG)) s.insertSheet(SH.LOG).appendRow(['เวลา','lineUserId','การกระทำ','รายละเอียด']);
   const st = s.getSheetByName(SH.STAT);
   st.getRange(1, 1, 1, 11).setValues([['รหัส','ชื่อ','ภาค','รอบ','จำนวนคน','ผู้มาใหม่','บัพติศมา','Life Group','อธิษฐาน/ข่าว','ส่งโดย','เวลาส่ง']]);
+  if (!P.getProperty('LOGIN_CHANNEL_ID')) P.setProperty('LOGIN_CHANNEL_ID', '2012642298');
   if (!P.getProperty('CURRENT_ROUND')) P.setProperty('CURRENT_ROUND', '2026-Q4');
 }
 
