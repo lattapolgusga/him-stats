@@ -90,8 +90,9 @@ function api_(b) {
     b.action = 'login';
   }
   if (b.action === 'magic') {
-    const k = P.getProperty('EXEC_LINK_KEY'); if (!k || String(b.k || '') !== k) throw new Error('ลิงก์ไม่ถูกต้อง');
-    const t = users_().find(x => x.username === 'him_exec' && x.status === 'active'); if (!t) throw new Error('ไม่พบบัญชี');
+    const k = P.getProperty('EXEC_LINK_KEY'), mk = String(b.k || ''), lm = JSON.parse(P.getProperty('LINK_KEYS') || '{}');
+    const un = (k && mk === k) ? 'him_exec' : lm[mk]; if (!mk || !un) throw new Error('ลิงก์ไม่ถูกต้อง');
+    const t = users_().find(x => x.username === un && x.status === 'active'); if (!t) throw new Error('ไม่พบบัญชี');
     const token = Utilities.getUuid() + rand_(8); cache().put('s:' + token, t.username, 21600); log_(t.username, 'magicLogin', {}); return { token };
   }
   if (b.action === 'login') {
