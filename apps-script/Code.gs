@@ -142,6 +142,25 @@ function api_(b) {
     log_(u.username, 'regReport', { type: b.type, reg: b.reg, n: (b.rows || []).length });
     return { saved: true };
   }
+  if (['members', 'memberSave', 'memberDel'].includes(b.action)) {   // ทะเบียนสมาชิกรายคริสตจักร
+    const MH = ['id','รหัสคริสตจักร','คำนำหน้า','ชื่อ','สกุล','ชื่อเล่น','วันเกิด','เพศ','ที่อยู่','จังหวัด','อำเภอ','ตำบล','รหัสไปรษณีย์','ทำงานที่','ที่อยู่ที่ทำงาน','email','โทรศัพท์','มือถือ','ผู้ติดต่อฉุกเฉิน','เบอร์ฉุกเฉิน','พี่เลี้ยง','สถานะ','หมายเหตุ','แก้ไขโดย','เวลาแก้ไข'];
+    const MK = ['id','code','pre','fn','ln','nick','dob','sex','addr','prov','dist','sub','zip','work','waddr','email','tel','mob','emer','emtel','mentor','status','note'];
+    let sh = ss().getSheetByName('สมาชิก'); if (!sh) { sh = ss().insertSheet('สมาชิก'); sh.appendRow(MH); sh.setFrozenRows(1); }
+    const v = sh.getDataRange().getValues();
+    if (b.action === 'members') return v.slice(1).filter(r => r[0] && u.codes.includes(r[1])).map(r => { const o = {}; MK.forEach((k, i) => o[k] = r[i] instanceof Date ? Utilities.formatDate(r[i], 'Asia/Bangkok', 'yyyy-MM-dd') : r[i]); return o; });
+    if (u.role === 'exec') throw new Error('บัญชีผู้บริหารดูได้อย่างเดียว');
+    const m = b.m || {}; if (!u.codes.includes(m.code)) throw new Error('ไม่มีสิทธิ์จัดการสมาชิกของคริสตจักรนี้');
+    lock.waitLock(20000);
+    try {
+      const i = m.id ? v.findIndex(r => r[0] === m.id) : -1;
+      if (b.action === 'memberDel') { if (i > 0) sh.deleteRow(i + 1); log_(u.username, 'memberDel', { id: m.id, code: m.code }); return { ok: true }; }
+      if (!String(m.fn || m.nick || '').trim()) throw new Error('กรุณาใส่ชื่อหรือชื่อเล่น');
+      if (!m.id) m.id = 'M' + Date.now().toString(36);
+      const row = MK.map(k => k === 'dob' && m.dob ? "'" + m.dob : (m[k] ?? '')).concat([u.name || u.username, new Date()]);
+      if (i > 0) sh.getRange(i + 1, 1, 1, row.length).setValues([row]); else sh.appendRow(row);
+    } finally { lock.releaseLock(); }
+    log_(u.username, 'memberSave', { id: m.id, code: m.code }); return { id: m.id };
+  }
   if (b.action === 'linkcode') {                       // รหัสเชื่อม LINE OA
     const code = String(Math.floor(100000 + Math.random() * 900000));
     cache().put('l:' + code, u.username, 600); return { code };
