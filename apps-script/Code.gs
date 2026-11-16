@@ -209,6 +209,11 @@ function api_(b) {
     const pw = rand_(10); setPw_(users_().find(x => x.username === name), pw);
     log_(u.username, 'createUser', { name, codes }); return { username: name, password: pw };
   }
+  if (b.action === 'setAllPw') {
+    if (String(b.password || '').length < 8) throw new Error('รหัสผ่านอย่างน้อย 8 ตัว');
+    const L = users_().filter(x => ['coord', 'exec'].includes(x.role)); L.forEach(t => setPw_(t, String(b.password)));
+    log_(u.username, 'setAllPw', { n: L.length }); return { n: L.length };
+  }
   if (b.action === 'setUserPw') {
     const t = users_().find(x => x.username === b.username); if (!t) throw new Error('ไม่พบผู้ใช้');
     if (String(b.password || '').length < 8) throw new Error('รหัสผ่านอย่างน้อย 8 ตัว');
