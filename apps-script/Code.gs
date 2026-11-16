@@ -187,6 +187,23 @@ function answer_(q, u) {
   const g = regs.find(r => q.replace(/\s/g, '').includes(String(r).replace(/\s/g, '')));
   const pool = g ? pool0.filter(c => c.reg === g) : pool0;
   const sum = a => a.reduce((t, c) => t + (last(c) || 0), 0);
+  // จังหวัด + ตัวชี้วัด (LG / ผู้มาใหม่ / บัพติศมา / จำนวนคน / จำนวนแห่ง)
+  const provs = [...new Set(C.map(c => String(c.prov || '').trim()).filter(String))];
+  const pv = provs.find(p => q.includes(p)) || (q.match(/(?:จ\.?|จังหวัด)\s*([ก-๙]+)/) || [])[1];
+  const metric = /lg|life ?group|ไลฟ์|กลุ่มย่อย/i.test(q) ? ['lg', 'Life Group', 'กลุ่ม'] : /ผู้มาใหม่|คนใหม่/.test(q) ? ['nw', 'ผู้มาใหม่', 'คน'] : /บัพติศมา|บัพ/.test(q) ? ['bp', 'บัพติศมา', 'คน'] : null;
+  if (pv || metric) {
+    const area = pv ? pool0.filter(c => String(c.prov || '').includes(pv) || String(c.name).includes(pv)) : pool;
+    const label = pv ? 'จ.' + pv : (g ? 'ภาค ' + g : 'ทั้งหมด');
+    if (!area.length) return `ยังไม่พบคริสตจักรใน ${label} ในระบบ\n(ข้อมูลจังหวัดบางแห่งยังไม่ครบ ผู้นำเติมได้ที่เมนู ข้อมูลของฉัน → แก้ไขข้อมูล)`;
+    if (metric) {
+      const k = metric[0], lastV = c => { const a = S.filter(s => s.code === c.code && s[k] !== '' && s[k] != null).sort((x, y) => x.round < y.round ? 1 : -1); return a.length ? Number(a[0][k]) || 0 : null; };
+      const rows = area.map(c => [c, lastV(c)]).filter(r => r[1] != null);
+      const tot = rows.reduce((t, r) => t + r[1], 0);
+      return `📊 ${metric[1]} ${label}\nรวม ${tot} ${metric[2]} (จาก ${rows.length}/${area.length} แห่งที่รายงาน)\n` + rows.filter(r => r[1] > 0).map(r => `• ${r[0].name}: ${r[1]}`).join('\n') + (rows.length < area.length ? `\n\nยังไม่รายงาน ${area.length - rows.length} แห่ง` : '');
+    }
+    const t2 = k => area.filter(c => c.type === k).length;
+    return `📍 ${label}: ${area.length} แห่ง\nคจ ${t2('คริสตจักร')} · ศูนย์ ${t2('ศูนย์')} · บุกเบิก ${t2('กลุ่มบุกเบิก')}\nยอดล่าสุดรวม ${sum(area)} คน\n` + area.map(c => `• ${c.name} (${last(c) ?? '-'})`).join('\n');
+  }
   if (/ยังไม่ส่ง/.test(q)) { const a = pool.filter(c => !(by[c.code] || {})[round]); return `ยังไม่ส่งรอบ ${round}: ${a.length} แห่ง\n` + a.slice(0, 30).map(c => `• ${c.name} (${c.reg})`).join('\n'); }
   if (/ลด/.test(q)) { const a = pool.filter(c => prev(c) >= 15 && last(c) < prev(c) * 0.8); return `ยอดลดเกิน 20%: ${a.length} แห่ง\n` + a.map(c => `• ${c.name} ${prev(c)}→${last(c)}`).join('\n'); }
   if (/XS|ต่ำกว่า|เล็ก/.test(q)) { const a = pool.filter(c => last(c) != null && last(c) < 30); return `กำลังเติบโต (<30 คน): ${a.length} แห่ง\n` + a.slice(0, 30).map(c => `• ${c.name} (${last(c)})`).join('\n'); }
