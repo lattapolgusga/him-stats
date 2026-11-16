@@ -61,6 +61,7 @@ function doGet() { return ContentService.createTextOutput('HIM Stats API ok'); }
 
 function api_(b) {
   const lock = LockService.getScriptLock();
+  if (b.action === 'names') return users_().filter(u => u.status === 'active' && u.role !== 'admin').map(u => [u.name, u.username]);
   if (b.action === 'status') return { needsAdmin: !users_().some(u => u.role === 'admin' && u.hash) };
   if (b.action === 'bootstrap') {                     // สร้างแอดมินคนแรก (ใช้ได้ครั้งเดียว)
     if (users_().some(u => u.role === 'admin' && u.hash)) throw new Error('มีแอดมินแล้ว');
@@ -73,7 +74,9 @@ function api_(b) {
   if (b.action === 'login') {
     const key = 'f:' + String(b.username).toLowerCase(), fails = Number(cache().get(key) || 0);
     if (fails >= 5) throw new Error('ใส่รหัสผิดหลายครั้ง กรุณารอ 10 นาที');
-    const u = users_().find(x => x.username.toLowerCase() === String(b.username || '').trim().toLowerCase());
+    const q = String(b.username || '').trim().toLowerCase(), all = users_();
+    let u = all.find(x => x.username.toLowerCase() === q);
+    if (!u) { const byName = all.filter(x => String(x.name).trim().toLowerCase() === q); if (byName.length > 1) throw new Error('ชื่อนี้ซ้ำกันหลายแห่ง กรุณาใช้รหัส เช่น n1-001'); u = byName[0]; }
     if (!u || u.status !== 'active' || !u.hash || hash_(String(b.password || ''), u.salt) !== u.hash) {
       cache().put(key, String(fails + 1), 600); throw new Error('username หรือรหัสผ่านไม่ถูกต้อง');
     }

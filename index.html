@@ -37,8 +37,8 @@ function err(e){A().innerHTML=`<div class="card login"><p class="dn">${esc(e.mes
 async function boot(){try{if(TOKEN)return await load();const st=await api('status');st.needsAdmin?bootV():loginV()}catch(e){if(document.getElementById('lu'))return;err(e)}}
 function loginV(msg){document.getElementById('tabs').innerHTML='';document.getElementById('who').textContent='';
  A().innerHTML=`<form class="card login" onsubmit="event.preventDefault();doLogin()"><div style="font-size:40px">⛪</div><h3>เข้าสู่ระบบ</h3>
- <input id="lu" placeholder="username" autocomplete="username"><input id="lp" type="password" placeholder="รหัสผ่าน" autocomplete="current-password" style="margin-top:8px">
- <button id="lb" style="width:100%;margin-top:12px">เข้าสู่ระบบ</button><div id="lm">${msg?`<p class="dn">${esc(msg)}</p>`:''}</div><p class="note">ลืมรหัสผ่าน ติดต่อแอดมินส่วนกลาง</p></form>`}
+ <input id="lu" list="nl" placeholder="ชื่อกลุ่ม / คริสตจักร หรือรหัส" autocomplete="username"><datalist id="nl"></datalist><input id="lp" type="password" placeholder="รหัสผ่าน" autocomplete="current-password" style="margin-top:8px">
+ <button id="lb" style="width:100%;margin-top:12px">เข้าสู่ระบบ</button><div id="lm">${msg?`<p class="dn">${esc(msg)}</p>`:''}</div><p class="note">ลืมรหัสผ่าน ติดต่อแอดมินส่วนกลาง</p></form>`;api('names').then(n=>{const d=document.getElementById('nl');if(d)d.innerHTML=n.map(([a,u])=>`<option value="${esc(a)}">${esc(u)}</option>`).join('')}).catch(()=>{})}
 async function doLogin(){lb.disabled=true;lb.textContent='กำลังตรวจสอบ…';try{const r=await api('login',{username:lu.value,password:lp.value});setT(r.token);await load()}catch(e){lm.innerHTML=`<p class="dn">${esc(e.message)}</p>`;lb.disabled=false;lb.textContent='เข้าสู่ระบบ'}}
 function bootV(){A().innerHTML=`<form class="card login" onsubmit="event.preventDefault();doBoot()"><h3>ตั้งค่าแอดมินคนแรก</h3><p class="note">ทำครั้งเดียว หลังจากนี้แอดมินสร้างบัญชีให้คนอื่นในระบบ</p>
  <input id="bn" placeholder="ชื่อที่แสดง"><input id="lu" placeholder="username (a-z 0-9)" style="margin-top:8px"><input id="lp" type="password" placeholder="รหัสผ่าน (อย่างน้อย 8 ตัว)" style="margin-top:8px">
