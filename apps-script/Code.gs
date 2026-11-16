@@ -9,7 +9,13 @@ const SH = { REG: 'ทะเบียนคริสตจักร', STAT: 'ส
 const P = PropertiesService.getScriptProperties();
 const XF = [['mem','จน.สมาชิก'],['lgatt','มา LG'],['int','ผู้สนใจ'],['nb','ผู้เชื่อใหม่'],['pwo','เข้าเรียน พวอ.'],['lgl','ผู้นำ LG'],['men','พี่เลี้ยง'],['o2o','1 ต่อ 1'],
   ['a1','เด็ก 3-12'],['a2','Ablaze 13-18'],['a3','Uni 19-22'],['a4','Young Pro 23-35'],['a5','Pro 36-59'],['a6','ครอบครัว'],['a7','สูงวัย 60+'],
-  ['c1','✓ LG ทุกสัปดาห์'],['c2','✓ ชั้นดาวิดทุกเดือน'],['c3','✓ ชั้นเรียน พวอ.'],['c4','✓ ทีม WAM'],['cW','✓ Worship'],['cA','✓ Art'],['cM','✓ Media'],['c5','✓ เทศนา'],['c6','✓ ถวายทรัพย์'],['c7','✓ ทีมรับใช้เพียงพอ'],['c8','✓ ศบ ประจำ']];
+  ['c1','✓ LG ทุกสัปดาห์'],['c2','✓ ชั้นดาวิดทุกเดือน'],['c3','✓ ชั้นเรียน พวอ.'],['c4','✓ ทีม WAM'],['cW','✓ Worship'],['cA','✓ Art'],['cM','✓ Media'],['c5','✓ เทศนา'],['c6','✓ ถวายทรัพย์'],['c7','✓ ทีมรับใช้เพียงพอ'],['c8','✓ ศบ ประจำ'],['tgt','เป้า Q4 ยอดนมัสการ'],['tlg','เป้า Q4 LG'],['tnb','เป้า Q4 ผู้เชื่อใหม่']];
+function regTargets_() {   // เป้าหมายรายภาค 2026 จากชีต v2 แท็บ 6
+  try { const c = cache(), k = c.get('rt'); if (k) return JSON.parse(k);
+    const v = SpreadsheetApp.openById(P.getProperty('SOURCE_SHEET_ID')).getSheets().find(s => /^6 /.test(s.getName())).getDataRange().getValues();
+    const o = {}; v.slice(4).forEach(r => { if (r[0] && r[0] !== 'รวม') o[String(r[0]).replace(/\s/g, '')] = { t111: +r[9] || 0, tlg: +r[10] || 0, tpio: +r[11] || 0, tcen: +r[12] || 0, tch: +r[13] || 0 }; });
+    c.put('rt', JSON.stringify(o), 600); return o; } catch (e) { return {}; }
+}
 
 const ss = () => SpreadsheetApp.getActiveSpreadsheet();
 
@@ -105,7 +111,7 @@ function api_(b) {
   }
   if (b.action === 'me') {
     const S = stats_().filter(s => admin || u.codes.includes(s.code));
-    return { user: pub_(u), round, churches: admin ? C : C.filter(c => u.codes.includes(c.code)), stats: S };
+    return { targets: regTargets_(), user: pub_(u), round, churches: admin ? C : C.filter(c => u.codes.includes(c.code)), stats: S };
   }
   if (b.action === 'logout') { cache().remove('s:' + b.token); return {}; }
   if (b.action === 'password') {
