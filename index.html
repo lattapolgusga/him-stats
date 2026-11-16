@@ -1,0 +1,69 @@
+<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>H.I.M. Thailand — ระบบสถิติคริสตจักร</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--g:#06C755;--b:#1F4E78;--bg:#f4f6f9;--c:#fff;--t:#1d2733;--m:#6b7785;--r:#d9534f;--y:#f0ad4e}
+*{box-sizing:border-box}body{margin:0;font-family:Sarabun,sans-serif;background:var(--bg);color:var(--t);font-size:15px}
+header{background:var(--b);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header b{font-size:17px}header .sp{flex:1}button{font-family:inherit;font-size:14px;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;background:var(--b);color:#fff}
+button.sec{background:#e6ebf1;color:var(--t)}button.line{background:var(--g)}.tabs button{background:transparent;color:#cfe0f0}.tabs button.on{background:#ffffff22;color:#fff}
+main{max-width:1150px;margin:0 auto;padding:18px}.card{background:var(--c);border-radius:12px;padding:16px;box-shadow:0 1px 3px #0001;margin-bottom:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.kpi .v{font-size:28px;font-weight:700}.kpi .l{color:var(--m);font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:800px){.grid2{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:7px 6px;border-bottom:1px solid #eef1f4;text-align:left}th{color:var(--m);font-weight:600;position:sticky;top:0;background:#fff}
+.tw{max-height:480px;overflow:auto}.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;background:#e6ebf1}
+.XS{background:#fde2e1}.S{background:#fff1d6}.M{background:#dff3e4}.L{background:#d6e9fb}.dn{color:var(--r);font-weight:600}.up{color:#2e8b57;font-weight:600}
+.bar{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:13px}.bar span:first-child{width:80px}.bar .t{flex:1;background:#eef1f4;border-radius:6px;height:16px;overflow:hidden}.bar .f{height:100%;background:var(--b)}
+input,select{font-family:inherit;font-size:15px;padding:8px 10px;border:1px solid #cdd5df;border-radius:8px;width:100%}
+label{display:block;font-size:13px;color:var(--m);margin:10px 0 4px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.row>*{flex:1;min-width:140px}
+.login{max-width:420px;margin:50px auto;text-align:center}.ok{background:#dff3e4;color:#1e6b3a;padding:10px;border-radius:8px;margin-top:10px}
+.chat{height:420px;overflow:auto;background:#8cabd9;border-radius:10px;padding:12px}.msg{max-width:80%;padding:8px 12px;border-radius:14px;margin:6px 0;white-space:pre-wrap;font-size:14px}
+.me{background:#06C755;color:#fff;margin-left:auto}.bot{background:#fff}.chips button{margin:4px 4px 0 0;font-size:12px;padding:5px 10px}
+.note{font-size:12px;color:var(--m)}.hide{display:none}
+</style>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script src="config.js"></script></head><body>
+<header><b>⛪ H.I.M. Thailand · ระบบสถิติ</b><span class="sp"></span><span class="tabs" id="tabs"></span><span id="who" style="font-size:13px"></span></header>
+<main id="app"><div class="card login">กำลังโหลด…</div></main>
+<script>
+const CFG=window.HIM_CONFIG;const A=()=>document.getElementById('app');
+const esc=s=>String(s??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const sum=(a,f)=>a.reduce((s,x)=>s+(f(x)||0),0);const RL=r=>r;
+let ME=null,view='',cur=null,BY={},ROUNDS=[];
+async function api(action,extra={}){const r=await fetch(CFG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,idToken:liff.getIDToken(),...extra})});const j=await r.json();if(!j.ok)throw new Error(j.error);return j.data}
+function err(e){A().innerHTML=`<div class="card login"><p class="dn">${esc(e.message||e)}</p><button onclick="location.reload()">ลองใหม่</button></div>`}
+async function boot(){try{await liff.init({liffId:CFG.LIFF_ID});if(!liff.isLoggedIn())return liff.login();await load()}catch(e){err(e)}}
+async function load(){ME=await api('me');document.getElementById('who').textContent='👤 '+ME.name;
+ if(ME.state=='new')return regV();if(ME.state=='pending')return A().innerHTML=`<div class="card login"><div style="font-size:40px">⏳</div><h3>รอแอดมินอนุมัติ</h3><p class="note">เมื่ออนุมัติแล้ว LINE OA จะแจ้งให้ทราบ</p></div>`;
+ BY={};ME.stats.forEach(s=>(BY[s.code]=BY[s.code]||{})[s.round]=s.n);ROUNDS=[...new Set(ME.stats.map(s=>s.round).concat([ME.round]))].sort();
+ cur=ME.churches[0];view=ME.role=='admin'?'dash':'form';render()}
+const val=(c,r)=>(BY[c.code]||{})[r];const latest=c=>{for(let i=ROUNDS.length-1;i>=0;i--)if(val(c,ROUNDS[i])!=null)return val(c,ROUNDS[i]);return null};
+const prevOf=c=>{let f=0;for(let i=ROUNDS.length-1;i>=0;i--)if(val(c,ROUNDS[i])!=null){if(f)return val(c,ROUNDS[i]);f=1}return null};
+const size=v=>v==null?'':v<30?'XS':v<=50?'S':v<=100?'M':'L';
+function regV(){A().innerHTML=`<div class="card login"><h3>ลงทะเบียนครั้งแรก</h3><p class="note">ใส่รหัสคริสตจักรที่ได้รับจากผู้ดูแลภาค (เช่น N1-001)</p><input id="cc" placeholder="รหัสคริสตจักร"><button style="width:100%;margin-top:10px" onclick="reqB()">ส่งคำขอ</button><div id="m"></div></div>`}
+async function reqB(){try{await api('request',{code:cc.value});load()}catch(e){m.innerHTML=`<p class="dn">${esc(e.message)}</p>`}}
+function render(){const tabs=ME.role=='admin'?[['dash','แดชบอร์ด'],['list','ทะเบียน'],['appr','อนุมัติผู้ใช้']]:[['form','กรอกสถิติ'],['mine','ข้อมูลของฉัน']];
+ document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button class="${view==k?'on':''}" onclick="view='${k}';render()">${l}</button>`).join('');
+ ({dash:dashV,list:listV,appr:apprV,form:formV,mine:mineV})[view]()}
+function formV(){const c=cur;A().innerHTML=`<div class="card" style="max-width:520px;margin:auto">${ME.churches.length>1?`<label>คริสตจักรที่ดูแล</label><select onchange="cur=ME.churches.find(x=>x.code==this.value);render()">${ME.churches.map(x=>`<option ${x==c?'selected':''} value="${x.code}">${esc(x.name)}</option>`).join('')}</select>`:''}
+ <h3 style="margin:10px 0 2px">${esc(c.name)}</h3><div class="note">${c.code} · ${esc(c.reg)} · ${esc(c.type)}</div><h4>ส่งสถิติรอบ ${ME.round} ${val(c,ME.round)!=null?'<span class="tag M">ส่งแล้ว</span>':''}</h4>
+ <label>จำนวนคนมานมัสการ (เฉลี่ย) *</label><input id="f1" type="number" min="0" inputmode="numeric" value="${val(c,ME.round)??''}" placeholder="ครั้งก่อน ${latest(c)??'-'} คน">
+ <div class="row"><div><label>ผู้มาใหม่</label><input id="f2" type="number" min="0"></div><div><label>บัพติศมา</label><input id="f3" type="number" min="0"></div><div><label>Life Group</label><input id="f4" type="number" min="0"></div></div>
+ <label>เรื่องอธิษฐาน / ข่าว</label><input id="f5"><button id="sb" style="width:100%;margin-top:14px" onclick="sub()">ส่งสถิติ</button><div id="fm"></div></div>`}
+async function sub(){if(f1.value==='')return fm.innerHTML='<p class="dn">กรุณาใส่จำนวนคน</p>';sb.disabled=true;sb.textContent='กำลังส่ง…';
+ try{await api('submit',{code:cur.code,n:+f1.value,nw:f2.value,bp:f3.value,lg:f4.value,note:f5.value});(BY[cur.code]=BY[cur.code]||{})[ME.round]=+f1.value;fm.innerHTML='<div class="ok">✅ บันทึกแล้ว ขอบคุณครับ</div>'}catch(e){fm.innerHTML=`<p class="dn">${esc(e.message)}</p>`}sb.disabled=false;sb.textContent='ส่งสถิติ'}
+function mineV(){const c=cur,rs=ROUNDS.filter(r=>val(c,r)!=null),mx=Math.max(1,...rs.map(r=>val(c,r)));
+ A().innerHTML=`<div class="card"><h3>${esc(c.name)}</h3><p class="note">${c.code} · ${esc(c.reg)} · ผู้นำ ${esc(c.leader)}</p>${rs.map(r=>`<div class="bar"><span>${r}</span><div class="t"><div class="f" style="width:${val(c,r)/mx*100}%"></div></div><b>${val(c,r)}</b></div>`).join('')||'<p class="note">ยังไม่มีข้อมูล</p>'}</div>`}
+function dashV(){const C=ME.churches,R=ME.round,sub=C.filter(c=>val(c,R)!=null).length;const REGS=[...new Set(C.map(c=>c.reg))];
+ const reg=REGS.map(g=>{const a=C.filter(c=>c.reg==g);return[g,sum(a,latest)]}).sort((a,b)=>b[1]-a[1]);const mx=Math.max(1,reg[0]?.[1]||1);
+ const drops=C.map(c=>[c,prevOf(c),latest(c)]).filter(([c,p,l])=>p>=15&&l<p*.8);const t=k=>C.filter(c=>c.type==k).length;
+ A().innerHTML=`<div class="kpis">${[['แห่งทั้งหมด',C.length,`คจ ${t('คริสตจักร')} · ศูนย์ ${t('ศูนย์')} · บุกเบิก ${t('กลุ่มบุกเบิก')}`],['ยอดล่าสุดรวม',sum(C,latest).toLocaleString(),'คน'],[`ส่งรอบ ${R}`,`${sub}/${C.length}`,Math.round(sub/C.length*100)+'%'],['ควรติดตาม',drops.length,'ยอดลดเกิน 20%']].map(([l,v,s])=>`<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="note">${s}</div></div>`).join('')}</div>
+ <div class="grid2"><div class="card"><h3>ยอดรายภาค</h3>${reg.map(([g,v])=>`<div class="bar"><span>${esc(g)}</span><div class="t"><div class="f" style="width:${v/mx*100}%"></div></div><b>${v}</b></div>`).join('')}</div>
+ <div class="card"><h3>🙏 ควรเยี่ยมเยียน</h3><div class="tw"><table>${drops.map(([c,p,l])=>`<tr><td>${esc(c.name)}</td><td>${esc(c.reg)}</td><td class="dn">${p}→${l}</td></tr>`).join('')}</table></div></div></div>`}
+let F={q:'',reg:'',ns:false};
+function listV(){const REGS=[...new Set(ME.churches.map(c=>c.reg))].sort();A().innerHTML=`<div class="card"><div class="row"><div><label>ค้นหา</label><input oninput="F.q=this.value;tbl()" value="${esc(F.q)}"></div><div><label>ภาค</label><select onchange="F.reg=this.value;tbl()"><option value="">ทุกภาค</option>${REGS.map(g=>`<option ${F.reg==g?'selected':''}>${esc(g)}</option>`).join('')}</select></div><div><label><input type="checkbox" style="width:auto" onchange="F.ns=this.checked;tbl()" ${F.ns?'checked':''}> ยังไม่ส่ง</label></div></div><p class="note" id="cnt"></p><div class="tw" id="tb"></div></div>`;tbl()}
+function tbl(){const q=F.q.toLowerCase(),a=ME.churches.filter(c=>(!q||(c.name+c.leader+c.code).toLowerCase().includes(q))&&(!F.reg||c.reg==F.reg)&&(!F.ns||val(c,ME.round)==null));
+ cnt.textContent=a.length+' แห่ง';tb.innerHTML=`<table><tr><th>รหัส</th><th>ชื่อ</th><th>ภาค</th><th>ผู้นำ</th>${ROUNDS.map(r=>`<th>${r}</th>`).join('')}<th>ขนาด</th></tr>${a.map(c=>`<tr><td>${c.code}</td><td>${esc(c.name)}</td><td>${esc(c.reg)}</td><td>${esc(c.leader)}</td>${ROUNDS.map(r=>`<td>${val(c,r)??'–'}</td>`).join('')}<td>${size(latest(c))?`<span class="tag ${size(latest(c))}">${size(latest(c))}</span>`:''}</td></tr>`).join('')}</table>`}
+async function apprV(){A().innerHTML='<div class="card">กำลังโหลด…</div>';try{const p=await api('pending');A().innerHTML=`<div class="card"><h3>คำขอรออนุมัติ (${p.length})</h3><table>${p.map(u=>{const c=ME.churches.find(x=>x.code==u.codes[0]);return `<tr><td>${esc(u.name)}</td><td>${esc(u.codes.join(','))} ${c?esc(c.name):''}</td><td><button onclick="appr('${esc(u.uid)}',this)">อนุมัติ</button></td></tr>`}).join('')||'<tr><td class="note">ไม่มีคำขอ</td></tr>'}</table><p class="note">เพิ่มสิทธิ์หลายคริสตจักร หรือตั้งเป็นแอดมิน แก้ได้ในแท็บ "ผู้ใช้" ของ Google Sheet</p></div>`}catch(e){err(e)}}
+async function appr(uid,b){b.disabled=true;try{await api('approve',{uid});b.textContent='อนุมัติแล้ว'}catch(e){b.textContent=e.message}}
+boot();
+</script></body></html>
