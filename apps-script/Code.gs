@@ -164,7 +164,7 @@ function webhook_(body) {
       if (!t) text = 'รหัสไม่ถูกต้องหรือหมดอายุ กรุณาขอรหัสใหม่จากเว็บแอป (เมนู บัญชีของฉัน)';
       else { ss().getSheetByName(SH.USER).getRange(t.row, 10).setValue(uid); cache().remove('l:' + m[2]); log_(t.username, 'linkLine', {}); text = `เชื่อมบัญชี ${t.name || t.username} เรียบร้อยแล้ว 🙏\nถามข้อมูลได้เลย เช่น "สรุปภาพรวม"`; }
     } else if (!u) text = 'สวัสดีครับ 🙏 งานพันธกิจ H.I.M.\nหากต้องการถามข้อมูลสถิติ กรุณาเชื่อมบัญชีก่อน: เข้าเว็บแอป → บัญชีของฉัน → "รหัสเชื่อม LINE" แล้วพิมพ์ เชื่อม ตามด้วยรหัส 6 หลักที่นี่';
-    else text = answer_(q, u);
+    else text = (u.role === 'admin' && P.getProperty('ANTHROPIC_API_KEY')) ? askAI_(q, u) : answer_(q, u);
     reply_(ev.replyToken, text);
   });
   return ContentService.createTextOutput('ok');
@@ -211,4 +211,35 @@ function answer_(q, u) {
   if (c && !/สรุป/.test(q)) return `${c.name} (${c.code})\nภาค ${c.reg} · ${c.type}\nผู้นำ: ${c.leader}\n` + rounds.filter(r => (by[c.code] || {})[r] != null).map(r => `${r}: ${by[c.code][r]} คน`).join('\n');
   const t = k => pool.filter(c => c.type === k).length;
   return `📊 สรุป${g ? 'ภาค ' + g : (u.role === 'admin' ? 'ภาพรวม' : 'คริสตจักรของท่าน')}\nคจ ${t('คริสตจักร')} · ศูนย์ ${t('ศูนย์')} · บุกเบิก ${t('กลุ่มบุกเบิก')}\nยอดล่าสุดรวม ${sum(pool)} คน\nส่งรอบ ${round} แล้ว ${pool.filter(c => (by[c.code] || {})[round] != null).length}/${pool.length}\n\nถามได้: "สรุปภาค อีสาน 4", "ยังไม่ส่ง", "ยอดลด", "XS", หรือชื่อคริสตจักร`;
+}
+
+/* ---------- AI เลขา: อ่านทุกแท็บใน Sheet แล้วตอบคำถาม (เฉพาะแอดมิน) ---------- */
+function sheetsContext_() {
+  const skip = [SH.USER, SH.LOG];
+  let out = '';
+  ss().getSheets().forEach(sh => {
+    if (skip.includes(sh.getName())) return;
+    const v = sh.getDataRange().getDisplayValues().filter(r => r.some(String));
+    out += `\n### แท็บ: ${sh.getName()} (${v.length - 1} แถว)\n` + v.map(r => r.map(x => String(x).replace(/[\t\n]/g, ' ')).join('\t')).join('\n') + '\n';
+  });
+  return out.slice(0, 180000);
+}
+function askAI_(q, u) {
+  const c = cache(), key = 'ctx';
+  let ctx = c.get(key);
+  if (!ctx) { ctx = sheetsContext_(); try { c.put(key, ctx, 300); } catch (e) {} }
+  const sys = 'คุณคือ "เลขางานพันธกิจ H.I.M. Thailand" ตอบคำถามฝ่ายบริหารจากข้อมูลใน Google Sheet ที่ให้มาเท่านั้น ' +
+    'ตอบภาษาไทย สั้น กระชับ เป็นข้อความธรรมดาสำหรับแชท LINE (ไม่ใช้ markdown ตาราง) ใส่ตัวเลขที่นับจริงจากข้อมูล ' +
+    'ถ้าข้อมูลไม่พอหรือช่องว่าง ให้บอกตรงๆ ว่าข้อมูลส่วนไหนยังไม่ครบ ห้ามเดา ' +
+    `รอบรายงานปัจจุบันคือ ${P.getProperty('CURRENT_ROUND')} ใช้ภาษาที่สุภาพและให้กำลังใจ ใช้คำว่า "กำลังเติบโต" แทน "ต่ำกว่ามาตรฐาน"`;
+  const r = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    headers: { 'x-api-key': P.getProperty('ANTHROPIC_API_KEY'), 'anthropic-version': '2023-06-01' },
+    payload: JSON.stringify({ model: P.getProperty('AI_MODEL') || 'claude-haiku-5-5', max_tokens: 1200, system: sys,
+      messages: [{ role: 'user', content: 'ข้อมูลทั้งหมด (คั่นคอลัมน์ด้วย tab):\n' + ctx + '\n\nคำถาม: ' + q }] })
+  });
+  if (r.getResponseCode() !== 200) { log_(u.username, 'aiError', { code: r.getResponseCode(), body: r.getContentText().slice(0, 300) }); return answer_(q, u); }
+  const j = JSON.parse(r.getContentText());
+  log_(u.username, 'askAI', { q, in: j.usage && j.usage.input_tokens, out: j.usage && j.usage.output_tokens });
+  return (j.content || []).map(x => x.text || '').join('').trim() || answer_(q, u);
 }
