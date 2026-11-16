@@ -114,6 +114,18 @@ function api_(b) {
     log_(u.username, 'submit', { code: c.code, round, n });
     return { saved: true };
   }
+  if (b.action === 'updateInfo') {                     // ผู้นำแก้ข้อมูลทั่วไป + การขึ้นทะเบียน ศบ.
+    if (!admin && !u.codes.includes(b.code)) throw new Error('ไม่มีสิทธิ์แก้ข้อมูลคริสตจักรนี้');
+    const sh = ss().getSheetByName(SH.REG), v = sh.getDataRange().getValues();
+    const i = v.findIndex(r => r[0] === b.code); if (i < 1) throw new Error('ไม่พบคริสตจักร');
+    const clean = x => String(x == null ? '' : x).trim().slice(0, 120);
+    const f = { 3: clean(b.prov), 6: clean(b.leader), 7: clean(b.shirt), 8: clean(b.phone), 9: clean(b.email), 10: b.reged ? 'ขึ้นทะเบียนแล้ว' : '', 11: b.reged ? clean(b.regdate) : '' };
+    if (f[9] && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f[9])) throw new Error('อีเมลไม่ถูกต้อง');
+    const old = {}; lock.waitLock(20000);
+    try { Object.keys(f).forEach(k => { old[k] = v[i][k - 1]; sh.getRange(i + 1, Number(k)).setValue(f[k]); }); } finally { lock.releaseLock(); }
+    log_(u.username, 'updateInfo', { code: b.code, old, new: f });
+    return { saved: true };
+  }
   if (!admin) throw new Error('ต้องเป็นแอดมิน');
   if (b.action === 'users') return users_().map(pub_);
   if (b.action === 'createUser') {
