@@ -17,4 +17,4 @@
 5. **Webhook ของ OA:** ตั้งเป็น URL ของ Apps Script แล้วเปิด Use webhook และปิดข้อความตอบกลับอัตโนมัติ
 6. **แอดมินคนแรก:** เปิดเว็บแอปแล้วส่งคำขอด้วยรหัสคริสตจักรใดก็ได้ จากนั้นแก้แท็บ "ผู้ใช้" ใน Sheet ให้บทบาท = `admin` และสถานะ = `active`
 7. เปลี่ยนแชนแนล HIM Stats App จาก Developing เป็น **Published**
-8. **Rich menu ใน OA:** ปุ่ม "อัปเดทสถิติ" ลิงก์ไปที่ `https://liff.line.me/<LIFF ID>`
+8. **Rich menu ใน OA:** ปุ่ม "อัปเดทสถิติ" ลิงก์ไปที่ `https://liff.line.me/2012642298-oFNHXp70`
