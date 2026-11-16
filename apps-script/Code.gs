@@ -143,8 +143,8 @@ function api_(b) {
     return { saved: true };
   }
   if (['members', 'memberSave', 'memberDel'].includes(b.action)) {   // ทะเบียนสมาชิกรายคริสตจักร
-    const MH = ['id','รหัสคริสตจักร','คำนำหน้า','ชื่อ','สกุล','ชื่อเล่น','วันเกิด','เพศ','ที่อยู่','จังหวัด','อำเภอ','ตำบล','รหัสไปรษณีย์','ทำงานที่','ที่อยู่ที่ทำงาน','email','โทรศัพท์','มือถือ','ผู้ติดต่อฉุกเฉิน','เบอร์ฉุกเฉิน','พี่เลี้ยง','สถานะ','หมายเหตุ','แก้ไขโดย','เวลาแก้ไข'];
-    const MK = ['id','code','pre','fn','ln','nick','dob','sex','addr','prov','dist','sub','zip','work','waddr','email','tel','mob','emer','emtel','mentor','status','note'];
+    const MH = ['id','รหัสคริสตจักร','คำนำหน้า','ชื่อ','สกุล','ชื่อเล่น','วันเกิด','เพศ','ที่อยู่','จังหวัด','อำเภอ','ตำบล','รหัสไปรษณีย์','ทำงานที่','ที่อยู่ที่ทำงาน','email','โทรศัพท์','มือถือ','ผู้ติดต่อฉุกเฉิน','เบอร์ฉุกเฉิน','พี่เลี้ยง','สถานะ','หมายเหตุ','รูป (Drive id)','แก้ไขโดย','เวลาแก้ไข'];
+    const MK = ['id','code','pre','fn','ln','nick','dob','sex','addr','prov','dist','sub','zip','work','waddr','email','tel','mob','emer','emtel','mentor','status','note','photo'];
     let sh = ss().getSheetByName('สมาชิก'); if (!sh) { sh = ss().insertSheet('สมาชิก'); sh.appendRow(MH); sh.setFrozenRows(1); }
     const v = sh.getDataRange().getValues();
     if (b.action === 'members') return v.slice(1).filter(r => r[0] && u.codes.includes(r[1])).map(r => { const o = {}; MK.forEach((k, i) => o[k] = r[i] instanceof Date ? Utilities.formatDate(r[i], 'Asia/Bangkok', 'yyyy-MM-dd') : r[i]); return o; });
@@ -184,10 +184,11 @@ function api_(b) {
     if (u.role === 'exec') throw new Error('บัญชีผู้บริหารดูได้อย่างเดียว');
     if (!admin && !u.codes.includes(b.code)) throw new Error('ไม่มีสิทธิ์แก้ข้อมูลคริสตจักรนี้');
     const data = String(b.data || ''); if (data.length > 4e6) throw new Error('รูปใหญ่เกินไป');
-    const sh = ss().getSheetByName(SH.REG), v = sh.getDataRange().getValues(), i = v.findIndex(r => r[0] === b.code); if (i < 1) throw new Error('ไม่พบคริสตจักร');
     const it = DriveApp.getFoldersByName('HIM Stats รูปคริสตจักร'), folder = it.hasNext() ? it.next() : DriveApp.createFolder('HIM Stats รูปคริสตจักร');
     const f = folder.createFile(Utilities.newBlob(Utilities.base64Decode(data), 'image/jpeg', b.code + '-' + Date.now() + '.jpg'));
     f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    if (b.member) { log_(u.username, 'uploadMemberPhoto', { code: b.code, id: f.getId() }); return { id: f.getId() }; }
+    const sh = ss().getSheetByName(SH.REG), v = sh.getDataRange().getValues(), i = v.findIndex(r => r[0] === b.code); if (i < 1) throw new Error('ไม่พบคริสตจักร');
     sh.getRange(i + 1, 20).setValue(f.getId()); log_(u.username, 'uploadPhoto', { code: b.code, id: f.getId() });
     return { id: f.getId() };
   }
