@@ -31,7 +31,11 @@ const sum=(a,f)=>a.reduce((s,x)=>s+(f(x)||0),0);const RL=r=>r;
 let ME=null,view='',cur=null,BY={},ROUNDS=[];
 async function api(action,extra={}){const r=await fetch(CFG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,idToken:liff.getIDToken(),...extra})});const j=await r.json();if(!j.ok)throw new Error(j.error);return j.data}
 function err(e){A().innerHTML=`<div class="card login"><p class="dn">${esc(e.message||e)}</p><button onclick="location.reload()">ลองใหม่</button></div>`}
-async function boot(){try{await liff.init({liffId:CFG.LIFF_ID});if(!liff.isLoggedIn())return liff.login();await load()}catch(e){err(e)}}
+async function boot(){try{
+ await Promise.race([liff.init({liffId:CFG.LIFF_ID}),new Promise(r=>setTimeout(r,8000))]);
+ if(!liff.isLoggedIn())return liff.login({redirectUri:location.origin+location.pathname});
+ if(location.search)history.replaceState(null,'',location.pathname);
+ A().innerHTML='<div class="card login">กำลังโหลดข้อมูล…</div>';await load()}catch(e){err(e)}}
 async function load(){ME=await api('me');document.getElementById('who').textContent='👤 '+ME.name;
  if(ME.state=='new')return regV();if(ME.state=='pending')return A().innerHTML=`<div class="card login"><div style="font-size:40px">⏳</div><h3>รอแอดมินอนุมัติ</h3><p class="note">เมื่ออนุมัติแล้ว LINE OA จะแจ้งให้ทราบ</p></div>`;
  BY={};ME.stats.forEach(s=>(BY[s.code]=BY[s.code]||{})[s.round]=s.n);ROUNDS=[...new Set(ME.stats.map(s=>s.round).concat([ME.round]))].sort();
