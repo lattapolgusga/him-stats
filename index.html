@@ -81,7 +81,7 @@ function repExecV(){const D=RP.data,R=RP.regs,T=Object.keys(RS),ne=v=>v!=null&&S
  const pc=(a,b)=>b?Math.round(a*100/b):0,col=p=>p>=80?'#3c9a6b':p>=50?'#3b78d8':p>=25?'#e0a43a':'#d9534f';
  const c111={};(D.r6||[]).forEach(r=>{c111[r[1]]=(c111[r[1]]||0)+(+r[2]||0)});const tot111=Object.values(c111).reduce((a,b)=>a+b,0),mx=Math.max(1,...Object.values(c111));
  const bp=(D.r5||[]).filter(r=>ne(r[3])),agd=AGD.map((a,i)=>(D.r8||[]).filter(r=>ne(r[2+i])).length),met=new Set((D.r8||[]).filter(r=>ne(r[1])).map(r=>r[0])).size;
- const yu=(D.r2||[]).filter(r=>ne(r[2])).length,q3=(D.r4||[]).filter(r=>ne(r[1])||ne(r[2]));
+ const yu=(D.r2||[]).filter(r=>ne(r[3])).length,q3=(D.r4||[]).filter(r=>ne(r[1])||ne(r[2]));
  const bar=(l,v,m,c)=>`<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><div style="width:190px;font-size:14px">${esc(l)}</div><div style="flex:1;background:#eef1f5;border-radius:6px;height:16px"><div style="width:${pc(v,m)}%;background:${c};height:16px;border-radius:6px"></div></div><b style="width:38px;text-align:right">${v}</b></div>`;
  const kpi=(ic,l,v,sub)=>`<div class="card" style="flex:1;min-width:170px;margin:0"><div class="note">${ic} ${l}</div><div style="font-size:32px;font-weight:700">${v}</div><div class="note">${sub}</div></div>`;
  A().innerHTML=`<div class="card"><h3>📊 ภาพรวมรายงานภาค · รอบ ${esc(RP.round)}</h3><div style="display:flex;gap:12px;flex-wrap:wrap">
