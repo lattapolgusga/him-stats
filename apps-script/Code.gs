@@ -247,7 +247,7 @@ function webhook_(body) {
     let q = ev.message.text.trim(); const uid = ev.source.userId;
     if (grp) {
       const tagged = ((ev.message.mention || {}).mentionees || []).some(x => x.isSelf);
-      if (!tagged && !/^(โรส|เลขา)/.test(q)) return;
+      if (!tagged && !/^(โรส|เลขา)/.test(q) && !/^(เชื่อม|link)\s*\d{6}$/i.test(q)) return;
       q = q.replace(/@\S+\s*/g, '').replace(/^(โรส|เลขา)\s*/, '').trim() || 'สรุปภาพรวม';
     }
     let text, u = users_().find(x => x.lineUserId === uid && x.status === 'active');
@@ -256,7 +256,7 @@ function webhook_(body) {
       const name = cache().get('l:' + m[2]); const t = name && users_().find(x => x.username === name);
       if (!t) text = 'รหัสไม่ถูกต้องหรือหมดอายุ กรุณาขอรหัสใหม่จากเว็บแอป (เมนู บัญชีของฉัน)';
       else { ss().getSheetByName(SH.USER).getRange(t.row, 10).setValue(uid); cache().remove('l:' + m[2]); log_(t.username, 'linkLine', {}); text = `เชื่อมบัญชี ${t.name || t.username} เรียบร้อยแล้ว 🙏\nถามข้อมูลได้เลย เช่น "สรุปภาพรวม"`; }
-    } else if (!u) text = 'สวัสดีครับ 🙏 งานพันธกิจ H.I.M.\nหากต้องการถามข้อมูลสถิติ กรุณาเชื่อมบัญชีก่อน: เข้าเว็บแอป → บัญชีของฉัน → "รหัสเชื่อม LINE" แล้วพิมพ์ เชื่อม ตามด้วยรหัส 6 หลักที่นี่';
+    } else if (!u) text = 'สวัสดีค่ะ 🙏 งานพันธกิจ H.I.M.\nหากต้องการถามข้อมูลสถิติ กรุณาเชื่อมบัญชีก่อน: เข้าเว็บแอป → บัญชีของฉัน → "รหัสเชื่อม LINE" แล้วพิมพ์ เชื่อม ตามด้วยรหัส 6 หลักที่นี่';
     else text = (['admin', 'exec'].includes(u.role) && P.getProperty('ANTHROPIC_API_KEY')) ? askAI_(q, u) : answer_(q, u);
     reply_(ev.replyToken, text);
   });
