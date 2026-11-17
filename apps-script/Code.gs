@@ -241,8 +241,15 @@ function api_(b) {
 /* ---------- LINE OA: ตอบคำถาม ---------- */
 function webhook_(body) {
   body.events.forEach(ev => {
+    const grp = ev.source && ev.source.type !== 'user';
+    if (ev.type === 'join') return reply_(ev.replyToken, 'สวัสดีค่ะ 🙏 เลขางานพันธกิจ H.I.M. ยินดีให้บริการค่ะ\nในกลุ่มนี้ ถ้าต้องการถามข้อมูล พิมพ์ขึ้นต้นด้วย "โรส" หรือแท็ก @ ถึงเลขาได้เลยค่ะ เช่น "โรส สรุปภาพรวม"');
     if (ev.type !== 'message' || ev.message.type !== 'text') return;
-    const q = ev.message.text.trim(), uid = ev.source.userId;
+    let q = ev.message.text.trim(); const uid = ev.source.userId;
+    if (grp) {
+      const tagged = ((ev.message.mention || {}).mentionees || []).some(x => x.isSelf);
+      if (!tagged && !/^(โรส|เลขา)/.test(q)) return;
+      q = q.replace(/@\S+\s*/g, '').replace(/^(โรส|เลขา)\s*/, '').trim() || 'สรุปภาพรวม';
+    }
     let text, u = users_().find(x => x.lineUserId === uid && x.status === 'active');
     const m = q.match(/^(เชื่อม|link)\s*(\d{6})$/i);
     if (m) {
