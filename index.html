@@ -74,7 +74,24 @@ const RS={r6:{t:'แผน 111 (ไตรมาส 3-4)',fix:['การปร�
  r2:{t:'แผนสถาบัน Youth',c:[['จังหวัด'],['มหาวิทยาลัย/วิทยาลัย'],['แผนการประกาศ','l'],['แผนการสร้างสาวก','l']]},
  r8:{t:'ประชุมดาวิดภาค',c:[['วันที่ประชุม','d']].concat(AGD.map(x=>[x,'c'])).concat([['รายละเอียดเพิ่มเติม','l']])}};
 let RP=null,RG='',RTp='r6',RR={};
-async function repV(){if(!RP){A().innerHTML='<div class="card">กำลังโหลด…</div>';try{RP=await api('regReports');RG=RP.regs[0]||''}catch(e){return err(e)}}RR={};repDraw()}
+async function repV(){if(!RP){A().innerHTML='<div class="card">กำลังโหลด…</div>';try{RP=await api('regReports');RG=RP.regs[0]||''}catch(e){return err(e)}}RR={};ME.role=='exec'?repExecV():repDraw()}
+function repExecV(){const D=RP.data,R=RP.regs,T=Object.keys(RS),ne=v=>v!=null&&String(v).trim()!==''&&v!==false;
+ const has=(t,g)=>(D[t]||[]).some(r=>r[0]==g&&r.slice(1).some((v,j)=>!(RS[t].fix&&j<[].concat(RS[t].fix[0]).length)&&ne(v)));
+ const sub=T.map(t=>R.filter(g=>has(t,g)).length),any=R.filter(g=>T.some(t=>has(t,g))).length,full=R.filter(g=>T.every(t=>has(t,g))).length;
+ const pc=(a,b)=>b?Math.round(a*100/b):0,col=p=>p>=80?'#3c9a6b':p>=50?'#3b78d8':p>=25?'#e0a43a':'#d9534f';
+ const c111={};(D.r6||[]).forEach(r=>{c111[r[1]]=(c111[r[1]]||0)+(+r[2]||0)});const tot111=Object.values(c111).reduce((a,b)=>a+b,0),mx=Math.max(1,...Object.values(c111));
+ const bp=(D.r5||[]).filter(r=>ne(r[3])),agd=AGD.map((a,i)=>(D.r8||[]).filter(r=>ne(r[2+i])).length),met=new Set((D.r8||[]).filter(r=>ne(r[1])).map(r=>r[0])).size;
+ const yu=(D.r2||[]).filter(r=>ne(r[2])).length,q3=(D.r4||[]).filter(r=>ne(r[1])||ne(r[2]));
+ const bar=(l,v,m,c)=>`<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><div style="width:190px;font-size:14px">${esc(l)}</div><div style="flex:1;background:#eef1f5;border-radius:6px;height:16px"><div style="width:${pc(v,m)}%;background:${c};height:16px;border-radius:6px"></div></div><b style="width:38px;text-align:right">${v}</b></div>`;
+ const kpi=(ic,l,v,sub)=>`<div class="card" style="flex:1;min-width:170px;margin:0"><div class="note">${ic} ${l}</div><div style="font-size:32px;font-weight:700">${v}</div><div class="note">${sub}</div></div>`;
+ A().innerHTML=`<div class="card"><h3>📊 ภาพรวมรายงานภาค · รอบ ${esc(RP.round)}</h3><div style="display:flex;gap:12px;flex-wrap:wrap">
+ ${kpi('🗺️','ภาคที่ส่งรายงานแล้ว',any+'/'+R.length,'ส่งครบทุกหัวข้อ '+full+' ภาค')}${kpi('🌱','แผนเปิดงานใหม่ (111)',tot111,'แห่ง รวมทุกภาค')}${kpi('🤝','ประชุมดาวิดภาค',met,'ภาคที่ประชุมแล้ว')}${kpi('🎓','แผนสถาบัน Youth',yu,'สถาบันที่มีแผนประกาศ')}</div></div>
+ <div class="grid2"><div class="card"><h3>✅ ความครบของรายงาน</h3><div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:space-around">${T.map((t,i)=>`<div style="text-align:center;width:120px">${dring(pc(sub[i],R.length),col(pc(sub[i],R.length)),sub[i]+'/'+R.length,'ภาค')}<div style="font-size:13px;margin-top:6px">${RS[t].t}</div></div>`).join('')}</div></div>
+ <div class="card"><h3>🌱 แผน 111 · ตั้งใจเปิดใหม่ (แห่ง)</h3>${RS.r6.fix.map((f,i)=>bar(f,c111[f]||0,mx,['#3b78d8','#3c9a6b','#e0a43a','#8e6bd8','#d9534f'][i])).join('')}</div></div>
+ <div class="grid2"><div class="card"><h3>🤝 วาระที่ภาคใช้ในการประชุมดาวิด</h3>${AGD.map((a,i)=>bar(a,agd[i],Math.max(1,R.length),'#3b78d8')).join('')}</div>
+ <div class="card"><h3>💡 Best Practice & Pain Point</h3>${bp.length?['Best Practice','Pain Point'].map(k=>{const L=bp.filter(r=>r[1]==k);return `<h4 style="margin:10px 0 4px">${k=='Best Practice'?'🌟':'⚠️'} ${k} (${L.length})</h4>`+(L.map(r=>`<div style="padding:8px 10px;margin:4px 0;border-radius:8px;background:${k=='Best Practice'?'#eef8f2':'#fdf0ef'}"><b>${esc(r[0])}</b> · ${esc(r[3])}</div>`).join('')||'<p class="note">ยังไม่มี</p>')}).join(''):'<p class="note">ยังไม่มีภาคส่งข้อมูล</p>'}</div></div>
+ <div class="card"><h3>📈 ผลการดำเนินงาน ไตรมาส 3</h3>${q3.length?q3.map(r=>`<div style="padding:10px;margin:6px 0;border-left:4px solid #3b78d8;background:#f6f8fb;border-radius:6px"><b>ภาค ${esc(r[0])}</b>${ne(r[1])?`<div>🎯 ${esc(r[1])}</div>`:''}${ne(r[2])?`<div>✅ ${esc(r[2])}</div>`:''}${ne(r[3])?`<div>📣 ${esc(r[3])}</div>`:''}</div>`).join(''):'<p class="note">ยังไม่มีภาคส่งข้อมูล</p>'}</div>
+ <div class="card"><h3>🗺️ สถานะการส่งรายภาค</h3><div class="tw"><table><tr><th>ภาค</th>${T.map(t=>`<th style="text-align:center">${RS[t].t}</th>`).join('')}</tr>${R.map(g=>`<tr><td>${esc(g)}</td>${T.map(t=>`<td style="text-align:center">${has(t,g)?'🟢':'⚪'}</td>`).join('')}</tr>`).join('')}</table></div><p class="note">🟢 ส่งแล้ว · ⚪ ยังไม่ส่ง</p></div>`}
 function repRows(t){const S=RS[t],got=(RP.data[t]||[]).filter(r=>r[0]==RG).map(r=>r.slice(1));
  if(S.fix)return S.fix.map(f=>{const k=[].concat(f),g=got.find(r=>k.every((x,i)=>String(r[i])==String(x)));return g||k.concat(Array(S.c.length-k.length).fill(''))});
  return got.length?got:[Array(S.c.length).fill('')]}
