@@ -251,6 +251,9 @@ function webhook_(body) {
       q = q.replace(/@\S+\s*/g, '').replace(/^(โรส|เลขา)\s*/, '').trim() || 'สรุปภาพรวม';
     }
     let text, u = users_().find(x => x.lineUserId === uid && x.status === 'active');
+    const gid = ev.source.groupId || ev.source.roomId || '', fg = P.getProperty('FULL_GROUP');
+    if (grp && u && u.role === 'admin' && /^เปิดสิทธิ์กลุ่ม/.test(q)) { P.setProperty('FULL_GROUP', gid); log_(u.username, 'fullGroup', { gid }); return reply_(ev.replyToken, 'เปิดสิทธิ์ระดับผู้บริหารให้กลุ่มนี้แล้วค่ะ 🙏 ทุกคนในกลุ่มถามข้อมูลได้ทุกเรื่อง โดยขึ้นต้นด้วย "โรส" หรือแท็กเลขาค่ะ'); }
+    if (grp && gid && gid === fg && !/^(เชื่อม|link)\s*\d{6}$/i.test(q)) { const gu = u || { username: 'group:' + gid.slice(-6), name: 'กลุ่มพันธกิจ', role: 'exec', codes: [] }; return reply_(ev.replyToken, P.getProperty('ANTHROPIC_API_KEY') ? askAI_(q, gu) : answer_(q, gu)); }
     const m = q.match(/^(เชื่อม|link)\s*(\d{6})$/i);
     if (m) {
       const name = cache().get('l:' + m[2]); const t = name && users_().find(x => x.username === name);
