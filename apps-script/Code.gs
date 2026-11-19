@@ -49,7 +49,7 @@ function scope_(u, C) {   // ขยายสิทธิ์: coord = ทั้�
   const regs = u.codes.filter(k => k.startsWith('REG:')).map(k => k.slice(4));
   if (u.role === 'exec') u.codes = C.map(c => c.code);
   else if (u.role === 'coord') u.codes = [...new Set(u.codes.filter(k => !k.startsWith('REG:')).concat(C.filter(c => regs.includes(String(c.reg))).map(c => c.code)))];
-  return u;
+  u.regs = regs; return u;
 }
 function pub_(u) { return { username: u.username, name: u.name, role: u.role, codes: u.codes, status: u.status, line: !!u.lineUserId }; }
 
@@ -162,18 +162,21 @@ function api_(b) {
     gpush_(`📝 รายงานภาค ${b.reg} · ${({ r6: 'แผน 111', r5: 'Best Practice & Pain Point', r4: 'ผลการดำเนินงาน Q3', r2: 'แผนสถาบัน Youth', r8: 'ประชุมดาวิดภาค' })[b.type] || b.type}\n✍️ โดย ${u.name || u.username}`);
     return { saved: true };
   }
-  if (['members', 'memberSave', 'memberDel'].includes(b.action)) {   // ทะเบียนสมาชิกรายคริสตจักร
+  if (['members', 'memberSave', 'memberDel', 'mvConn'].includes(b.action)) {   // ทะเบียนสมาชิกรายคริสตจักร
     const MH = ['id','รหัสคริสตจักร','คำนำหน้า','ชื่อ','สกุล','ชื่อเล่น','วันเกิด','เพศ','ที่อยู่','จังหวัด','อำเภอ','ตำบล','รหัสไปรษณีย์','ทำงานที่','ที่อยู่ที่ทำงาน','email','โทรศัพท์','มือถือ','ผู้ติดต่อฉุกเฉิน','เบอร์ฉุกเฉิน','พี่เลี้ยง','สถานะ','หมายเหตุ','รูป (Drive id)','สถานะฝ่ายวิญญาณ','รับเชื่อ','นิวไลฟ์','บัพติศมา','สมาชิกภาพ','โน้ตฝ่ายวิญญาณ','คู่สมรส','บิดา','มารดา','แก้ไขโดย','เวลาแก้ไข'];
-    const MK = ['id','code','pre','fn','ln','nick','dob','sex','addr','prov','dist','sub','zip','work','waddr','email','tel','mob','emer','emtel','mentor','status','note','photo','sp','bel','nl','bap','memb','spnote','spouse','father','mother','mvloc','mvwhat','mvstat','mvserve'];
+    const MK = ['id','code','pre','fn','ln','nick','dob','sex','addr','prov','dist','sub','zip','work','waddr','email','tel','mob','emer','emtel','mentor','status','note','photo','sp','bel','nl','bap','memb','spnote','spouse','father','mother','mvloc','mvwhat','mvstat','mvserve','mvdate','mvreg','mvconn'];
     let sh = ss().getSheetByName('สมาชิก'); if (!sh) { sh = ss().insertSheet('สมาชิก'); sh.setFrozenRows(1); }
     if (sh.getRange(1, 1, 1, MH.length).getValues()[0].join('|') !== MH.join('|')) sh.getRange(1, 1, 1, MH.length).setValues([MH]);
     const v = sh.getDataRange().getValues();
-    if (b.action === 'members') return v.slice(1).filter(r => r[0] && u.codes.includes(r[1])).map(r => { const o = {}; MK.forEach((k, i) => o[k] = r[i] instanceof Date ? Utilities.formatDate(r[i], 'Asia/Bangkok', 'yyyy-MM-dd') : r[i]); return o; });
+    const RG = MK.indexOf('mvreg'), inReg = r => (u.regs || []).includes(String(r[RG] || ''));
+    if (b.action === 'mvConn') { const i = v.findIndex(r => r[0] === b.id); if (i < 1 || !(u.role === 'admin' || (u.role === 'coord' && (inReg(v[i]) || u.codes.includes(v[i][1]))))) throw new Error('ไม่มีสิทธิ์'); const st = ['ยังไม่ได้ติดต่อ', 'ติดต่อแล้ว', 'เข้าร่วมแล้ว'].includes(b.conn) ? b.conn : 'ยังไม่ได้ติดต่อ'; sh.getRange(i + 1, MK.indexOf('mvconn') + 1).setValue(st); log_(u.username, 'mvConn', { id: b.id, st }); gpush_(`🚚 อัปเดตการเชื่อมต่อสมาชิกย้ายเข้า: ${v[i][MK.indexOf('nick')] || v[i][MK.indexOf('fn')]} → ${st}\n📍 ภาค${v[i][RG]}\n✍️ โดย ${u.name || u.username}`); return { ok: 1 }; }
+    if (b.action === 'members') return v.slice(1).filter(r => r[0] && (u.codes.includes(r[1]) || inReg(r))).map(r => { const o = {}; MK.forEach((k, i) => o[k] = r[i] instanceof Date ? Utilities.formatDate(r[i], 'Asia/Bangkok', 'yyyy-MM-dd') : r[i]); return o; });
     if (u.role === 'exec') throw new Error('บัญชีผู้บริหารดูได้อย่างเดียว');
-    const m = b.m || {}, isNew = !m.id; if (!u.codes.includes(m.code)) throw new Error('ไม่มีสิทธิ์จัดการสมาชิกของคริสตจักรนี้');
+    let prevReg = ''; const m = b.m || {}, isNew = !m.id; if (!u.codes.includes(m.code)) throw new Error('ไม่มีสิทธิ์จัดการสมาชิกของคริสตจักรนี้');
     lock.waitLock(20000);
     try {
       const i = m.id ? v.findIndex(r => r[0] === m.id) : -1; if (i > 0 && !u.codes.includes(v[i][1])) throw new Error('ไม่มีสิทธิ์');
+      prevReg = i > 0 ? String(v[i][RG] || '') : '';
       if (b.action === 'memberDel') { if (i > 0) sh.deleteRow(i + 1); log_(u.username, 'memberDel', { id: m.id, code: m.code }); return { ok: true }; }
       if (!String(m.fn || m.nick || '').trim()) throw new Error('กรุณาใส่ชื่อหรือชื่อเล่น');
       if (!m.id) m.id = 'M' + Date.now().toString(36);
@@ -181,7 +184,7 @@ function api_(b) {
       const row = MK.map(k => k === 'dob' && m.dob ? "'" + m.dob : m[k] === true ? '✓' : m[k] === false ? '' : (m[k] ?? '')).concat([u.name || u.username, new Date()]);
       if (i > 0) sh.getRange(i + 1, 1, 1, row.length).setValues([row]); else sh.appendRow(row);
     } finally { lock.releaseLock(); }
-    log_(u.username, 'memberSave', { id: m.id, code: m.code }); { const cc = churches_().find(x => x.code === m.code); gpush_(`👥 ${isNew ? 'เพิ่ม' : 'แก้ไข'}ข้อมูลสมาชิก: ${m.nick || m.fn || ''}${m.status ? ' (' + m.status + ')' : ''}\n⛪ ${cc ? cc.name : m.code}\n✍️ โดย ${u.name || u.username}`); } return { id: m.id };
+    log_(u.username, 'memberSave', { id: m.id, code: m.code }); if (m.status === 'ย้ายไปต่างจังหวัด' && m.mvreg && m.mvreg !== prevReg) { const c0 = churches_().find(x => x.code === m.code); gpush_(`🚚 สมาชิกย้ายเข้าภาค${m.mvreg}\n👤 ${m.nick || m.fn || ''} (${m.mvstat || 'สมาชิก'}) จาก ${c0 ? c0.name : m.code}\n📍 ${m.mvloc || '-'} · ${m.mvwhat || '-'}${m.mvserve ? '\n⛪ เคยรับใช้: ' + m.mvserve : ''}\n🙏 รบกวนผู้ประสานงานภาค${m.mvreg} ติดต่อและเชื่อมต่อด้วยค่ะ`); return { id: m.id }; } { const cc = churches_().find(x => x.code === m.code); gpush_(`👥 ${isNew ? 'เพิ่ม' : 'แก้ไข'}ข้อมูลสมาชิก: ${m.nick || m.fn || ''}${m.status ? ' (' + m.status + ')' : ''}\n⛪ ${cc ? cc.name : m.code}\n✍️ โดย ${u.name || u.username}`); } return { id: m.id };
   }
   if (b.action === 'linkcode') {                       // รหัสเชื่อม LINE OA
     const code = String(Math.floor(100000 + Math.random() * 900000));
