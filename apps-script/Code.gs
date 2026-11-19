@@ -207,6 +207,18 @@ function api_(b) {
     const t = '✅ ' + (u.name || u.username) + ' · ' + Utilities.formatDate(new Date(), 'Asia/Bangkok', 'd/M/yyyy');
     sh.getRange(1, 28).setValue('ยืนยันโดยผู้ประสานงาน'); sh.getRange(i + 1, 28).setValue(t); log_(u.username, 'pioConfirm', { code: b.code }); return { pconf: t };
   }
+  if (b.action === 'counselList') {
+    if (!['admin', 'exec', 'coord'].includes(u.role)) throw new Error('ไม่มีสิทธิ์ดูคำขอปรึกษา');
+    const sh = ss().getSheetByName('คำขอปรึกษา'); if (!sh) return [];
+    return sh.getDataRange().getValues().slice(1).map((r, i) => ({ row: i + 2, at: r[0] instanceof Date ? Utilities.formatDate(r[0], 'Asia/Bangkok', 'd/M/yyyy HH:mm') : String(r[0]), name: r[1], church: r[2], topic: r[3], help: r[4], contact: r[5], urg: r[6], status: r[7], owner: r[8] })).reverse();
+  }
+  if (b.action === 'counselSet') {
+    if (!['admin', 'coord'].includes(u.role)) throw new Error('ไม่มีสิทธิ์แก้สถานะ');
+    const sh = ss().getSheetByName('คำขอปรึกษา'), row = Number(b.row);
+    if (!sh || !(row >= 2 && row <= sh.getLastRow())) throw new Error('ไม่พบคำขอ');
+    const st = ['รับเรื่อง', 'กำลังดูแล', 'เสร็จสิ้น'].includes(b.status) ? b.status : 'รับเรื่อง';
+    sh.getRange(row, 8, 1, 2).setValues([[st, String(b.owner || '').trim().slice(0, 80)]]); log_(u.username, 'counselSet', { row, st }); return { ok: 1 };
+  }
   if (b.action === 'updateInfo') {                     // ผู้นำแก้ข้อมูลทั่วไป + การขึ้นทะเบียน ศบ.
     if (!admin && !u.codes.includes(b.code)) throw new Error('ไม่มีสิทธิ์แก้ข้อมูลคริสตจักรนี้');
     const sh = ss().getSheetByName(SH.REG), v = sh.getDataRange().getValues();
