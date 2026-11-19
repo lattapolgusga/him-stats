@@ -46,12 +46,12 @@ let CS=null;async function csV(){const can=['admin','exec','coord'].includes(ME.
 async function csSet(r){try{await api('counselSet',{row:r,status:document.getElementById('st'+r).value,owner:document.getElementById('ow'+r).value});toast('✅ บันทึกแล้ว');csV()}catch(e){alert(e.message)}}
 function counselV(fromLogin,inApp){if(!inApp){document.getElementById('who').innerHTML='';document.getElementById('tabs').innerHTML='';document.getElementById('strip').innerHTML=''};
  const H=['✝️ ชีวิตฝ่ายวิญญาณ','👪 ครอบครัว/คู่ครอง','💼 งาน/การเงิน','🙏 อยากให้อธิษฐานเผื่อ','⛪ การรับใช้/ผู้นำ','❤️ สุขภาพใจ','อื่นๆ'];
- A().innerHTML=`<form class="card" style="max-width:560px;margin:auto" onsubmit="event.preventDefault();csSend()"><h2 style="margin:0">🤝 ศูนย์ให้คำปรึกษา H.I.M.</h2><p class="note">เราพร้อมรับฟังและเดินไปด้วยกันค่ะ 🙏</p>
+ A().innerHTML=`<form class="card" style="max-width:560px;margin:auto" onsubmit="event.preventDefault();csSend()">${inApp?'':'<h2 style="margin:0">🤝 ศูนย์ให้คำปรึกษา H.I.M.</h2>'}<p class="note">เราพร้อมรับฟังและเดินไปด้วยกันค่ะ 🙏</p>
  <label>ชื่อ</label><input id="cs1" maxlength="80"><label style="display:flex;gap:6px;align-items:center;margin-top:6px"><input id="cs0" type="checkbox" style="width:auto" onchange="cs1.disabled=this.checked"> ไม่ประสงค์ออกนาม</label>
- <label>คริสตจักร (ถ้ามี)</label><input id="cs2" maxlength="80">
+ ${inApp&&ME&&ME.churches.length?`<input id="cs2" type="hidden" value="${esc((cur||ME.churches[0]).name)}">`:'<label>คริสตจักร (ถ้ามี)</label><input id="cs2" maxlength="80">'}
  <label>ประเด็นที่อยากปรึกษา *</label><textarea id="cs3" rows="4" maxlength="1500" style="width:100%;box-sizing:border-box"></textarea>
  <label>อยากให้ช่วยเหลือประเด็นใดเป็นหลัก (เลือกได้หลายข้อ)</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px">${H.map(h=>`<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" class="csh" value="${h}" style="width:auto"> ${h}</label>`).join('')}</div>
- <label>ช่องทางติดต่อกลับ (LINE ID / เบอร์โทร)</label><input id="cs4" maxlength="120">
+ <label>ช่องทางติดต่อกลับ (LINE ID / เบอร์โทร)</label><input id="cs4" maxlength="120" value="${inApp&&ME&&ME.churches.length?esc((cur||ME.churches[0]).phone||''):''}">
  <label>ความเร่งด่วน</label><select id="cs5"><option>ไม่เร่ง</option><option>ภายในสัปดาห์นี้</option><option>ด่วน</option></select>
  <div class="note" style="background:#fff7e6;padding:10px;border-radius:8px;margin-top:12px">📢 เมื่อกดส่ง ข้อมูลนี้จะแจ้งไปยัง <b>กลุ่มผู้ดูแลพันธกิจ H.I.M.</b> เพื่อให้ทีมติดต่อกลับและดูแลค่ะ หากไม่สะดวกเปิดเผยชื่อ เลือก "ไม่ประสงค์ออกนาม" ได้</div>
  <div class="note" style="background:#fdf0ef;padding:10px;border-radius:8px;margin-top:8px">🆘 หากมีเรื่องด่วนเกี่ยวกับความปลอดภัยของชีวิต โทร <b>สายด่วนสุขภาพจิต 1323</b> (ฟรี 24 ชม.) หรือ <b>1669</b> ได้ทันที ไม่ต้องรอทีมตอบกลับ</div>
