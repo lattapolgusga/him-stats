@@ -35,7 +35,7 @@ function setup() {
 /* ---------- ข้อมูล ---------- */
 function rows_(name) { const v = ss().getSheetByName(name).getDataRange().getValues(); v.shift(); return v; }
 function churches_() {
-  return rows_(SH.REG).filter(r => r[0]).map(r => ({ code: r[0], reg: r[1], prov: r[2], type: r[3], name: r[4], leader: r[5], shirt: r[6], phone: r[7], email: r[8], reged: r[9], regdate: r[10], status: r[11], note: r[14], p111: !!r[15], plus: !!r[16], addr: r[17] || '', map: r[18] || '', photo: r[19] || '', pfull: r[20] || '', freq: r[21] || '', pstart: r[22] instanceof Date ? Utilities.formatDate(r[22], 'Asia/Bangkok', 'yyyy-MM-dd') : (r[22] || ''), mother: r[23] || '', meet: r[24] || '', stage: r[25] || '', need: r[26] || '' }));
+  return rows_(SH.REG).filter(r => r[0]).map(r => ({ code: r[0], reg: r[1], prov: r[2], type: r[3], name: r[4], leader: r[5], shirt: r[6], phone: r[7], email: r[8], reged: r[9], regdate: r[10], status: r[11], note: r[14], p111: !!r[15], plus: !!r[16], addr: r[17] || '', map: r[18] || '', photo: r[19] || '', pfull: r[20] || '', freq: r[21] || '', pstart: r[22] instanceof Date ? Utilities.formatDate(r[22], 'Asia/Bangkok', 'yyyy-MM-dd') : (r[22] || ''), mother: r[23] || '', meet: r[24] || '', stage: r[25] || '', need: r[26] || '', pconf: r[27] || '' }));
 }
 function stats_() {
   return rows_(SH.STAT).filter(r => r[0]).map(r => { const x = {}; XF.forEach(([k], j) => { if (r[11 + j] !== '' && r[11 + j] != null) x[k] = r[11 + j]; });
@@ -188,13 +188,19 @@ function api_(b) {
     log_(u.username, 'submit', { code: c.code, round, n });
     return { saved: true };
   }
+  if (b.action === 'pioConfirm') {
+    if (!['admin', 'coord'].includes(u.role) || !u.codes.includes(b.code)) throw new Error('เฉพาะผู้ประสานงานภาคยืนยันได้');
+    const sh = ss().getSheetByName(SH.REG), v = sh.getDataRange().getValues(), i = v.findIndex(r => r[0] === b.code); if (i < 1) throw new Error('ไม่พบคริสตจักร');
+    const t = '✅ ' + (u.name || u.username) + ' · ' + Utilities.formatDate(new Date(), 'Asia/Bangkok', 'd/M/yyyy');
+    sh.getRange(1, 28).setValue('ยืนยันโดยผู้ประสานงาน'); sh.getRange(i + 1, 28).setValue(t); log_(u.username, 'pioConfirm', { code: b.code }); return { pconf: t };
+  }
   if (b.action === 'updateInfo') {                     // ผู้นำแก้ข้อมูลทั่วไป + การขึ้นทะเบียน ศบ.
     if (!admin && !u.codes.includes(b.code)) throw new Error('ไม่มีสิทธิ์แก้ข้อมูลคริสตจักรนี้');
     const sh = ss().getSheetByName(SH.REG), v = sh.getDataRange().getValues();
     const i = v.findIndex(r => r[0] === b.code); if (i < 1) throw new Error('ไม่พบคริสตจักร');
     const clean = x => String(x == null ? '' : x).trim().slice(0, 120);
     const f = { 3: clean(b.prov), 6: clean(b.leader), 7: clean(b.shirt), 8: clean(b.phone), 9: clean(b.email), 10: b.reged ? 'ขึ้นทะเบียนแล้ว' : '', 11: b.reged ? clean(b.regdate) : '', 16: b.p111 ? '✓' : '', 17: b.plus ? '✓' : '', 18: String(b.addr || '').trim().slice(0, 300), 19: clean(b.map) };
-    if (b.pio) { Object.assign(f, { 21: clean(b.pfull), 22: clean(b.freq), 23: clean(b.pstart), 24: clean(b.mother), 25: clean(b.meet), 26: clean(b.stage), 27: String(b.need || '').trim().slice(0, 300) }); if (sh.getRange(1, 21).getValue() !== 'ผู้นำบุกเบิก (ชื่อ-สกุล)') sh.getRange(1, 21, 1, 7).setValues([['ผู้นำบุกเบิก (ชื่อ-สกุล)', 'ความถี่ลงพื้นที่', 'วันที่เริ่มบุกเบิก', 'คริสตจักรแม่', 'วัน-เวลานัดพบ', 'ระยะการเติบโต', 'สิ่งที่ต้องการสนับสนุน']]); }
+    if (b.pio) { Object.assign(f, { 21: clean(b.pfull), 22: clean(b.freq), 23: clean(b.pstart), 24: clean(b.mother), 25: clean(b.meet), 26: clean(b.stage), 27: String(b.need || '').trim().slice(0, 300), 28: '' }); if (sh.getRange(1, 21).getValue() !== 'ผู้นำบุกเบิก (ชื่อ-สกุล)') sh.getRange(1, 21, 1, 7).setValues([['ผู้นำบุกเบิก (ชื่อ-สกุล)', 'ความถี่ลงพื้นที่', 'วันที่เริ่มบุกเบิก', 'คริสตจักรแม่', 'วัน-เวลานัดพบ', 'ระยะการเติบโต', 'สิ่งที่ต้องการสนับสนุน']]); }
     if (sh.getRange(1, 18).getValue() !== 'ที่อยู่') sh.getRange(1, 18, 1, 3).setValues([['ที่อยู่', 'แผนที่/พิกัด', 'รูป (Drive id)']]);
     if (f[9] && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f[9])) throw new Error('อีเมลไม่ถูกต้อง');
     if (typeof b.photo === 'string' && /^data:image\/jpeg;base64,/.test(b.photo) && b.photo.length < 48000) f[20] = b.photo;
