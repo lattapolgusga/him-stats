@@ -80,6 +80,19 @@ function doGet() { return ContentService.createTextOutput('HIM Stats API ok'); }
 function api_(b) {
   const lock = LockService.getScriptLock();
   if (b.action === 'names') return users_().filter(u => u.status === 'active' && u.role !== 'admin').map(u => [u.name, u.username]);
+  if (b.action === 'counsel') {
+    const c = cache(), day = 'cs:' + Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyyMMdd'), n = Number(c.get(day) || 0);
+    if (n >= 50) throw new Error('วันนี้มีคำขอจำนวนมาก กรุณาลองใหม่พรุ่งนี้ หรือโทร 1323');
+    const cl = (x, k) => String(x == null ? '' : x).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, k);
+    const f = { name: b.anon ? 'ไม่ประสงค์ออกนาม' : cl(b.name, 80), church: cl(b.church, 80), topic: cl(b.topic, 1500), help: cl(b.help, 200), contact: cl(b.contact, 120), urg: cl(b.urg, 30) };
+    if (!f.topic) throw new Error('กรุณาพิมพ์ประเด็นที่อยากปรึกษา');
+    if (!b.anon && !f.name) throw new Error('กรุณาใส่ชื่อ หรือเลือกไม่ประสงค์ออกนาม');
+    let sh = ss().getSheetByName('คำขอปรึกษา'); if (!sh) { sh = ss().insertSheet('คำขอปรึกษา'); sh.appendRow(['เวลา', 'ชื่อ', 'คริสตจักร', 'ประเด็นที่อยากปรึกษา', 'ความช่วยเหลือที่อยากได้', 'ช่องทางติดต่อ', 'ความเร่งด่วน', 'สถานะ', 'ผู้ดูแล']); }
+    sh.appendRow([new Date(), f.name, f.church, f.topic, f.help, f.contact, f.urg, 'รับเรื่อง', '']); c.put(day, String(n + 1), 86400);
+    const g = P.getProperty('NOTIFY_GROUP');
+    if (g) push_(g, `🔔 ศูนย์ให้คำปรึกษา · คำขอใหม่${f.urg === 'ด่วน' ? ' 🔴 ด่วน' : ''}\n👤 ${f.name}${f.church ? ' · ' + f.church : ''}\n💬 ประเด็น: ${f.topic}\n🤝 อยากให้ช่วย: ${f.help || '-'}\n📞 ติดต่อกลับ: ${f.contact || '-'}\n⏱ ความเร่งด่วน: ${f.urg || '-'}`);
+    return { ok: 1 };
+  }
   if (b.action === 'status') return { needsAdmin: !users_().some(u => u.role === 'admin' && u.hash) };
   if (b.action === 'bootstrap') {                     // สร้างแอดมินคนแรก (ใช้ได้ครั้งเดียว)
     if (users_().some(u => u.role === 'admin' && u.hash)) throw new Error('มีแอดมินแล้ว');
@@ -150,7 +163,7 @@ function api_(b) {
   }
   if (['members', 'memberSave', 'memberDel'].includes(b.action)) {   // ทะเบียนสมาชิกรายคริสตจักร
     const MH = ['id','รหัสคริสตจักร','คำนำหน้า','ชื่อ','สกุล','ชื่อเล่น','วันเกิด','เพศ','ที่อยู่','จังหวัด','อำเภอ','ตำบล','รหัสไปรษณีย์','ทำงานที่','ที่อยู่ที่ทำงาน','email','โทรศัพท์','มือถือ','ผู้ติดต่อฉุกเฉิน','เบอร์ฉุกเฉิน','พี่เลี้ยง','สถานะ','หมายเหตุ','รูป (Drive id)','สถานะฝ่ายวิญญาณ','รับเชื่อ','นิวไลฟ์','บัพติศมา','สมาชิกภาพ','โน้ตฝ่ายวิญญาณ','คู่สมรส','บิดา','มารดา','แก้ไขโดย','เวลาแก้ไข'];
-    const MK = ['id','code','pre','fn','ln','nick','dob','sex','addr','prov','dist','sub','zip','work','waddr','email','tel','mob','emer','emtel','mentor','status','note','photo','sp','bel','nl','bap','memb','spnote','spouse','father','mother'];
+    const MK = ['id','code','pre','fn','ln','nick','dob','sex','addr','prov','dist','sub','zip','work','waddr','email','tel','mob','emer','emtel','mentor','status','note','photo','sp','bel','nl','bap','memb','spnote','spouse','father','mother','mvloc','mvwhat','mvstat','mvserve'];
     let sh = ss().getSheetByName('สมาชิก'); if (!sh) { sh = ss().insertSheet('สมาชิก'); sh.setFrozenRows(1); }
     if (sh.getRange(1, 1, 1, MH.length).getValues()[0].join('|') !== MH.join('|')) sh.getRange(1, 1, 1, MH.length).setValues([MH]);
     const v = sh.getDataRange().getValues();
@@ -249,6 +262,7 @@ function api_(b) {
 function webhook_(body) {
   body.events.forEach(ev => {
     const grp = ev.source && ev.source.type !== 'user';
+    if (grp && !P.getProperty('NOTIFY_GROUP') && (ev.source.groupId || ev.source.roomId)) P.setProperty('NOTIFY_GROUP', ev.source.groupId || ev.source.roomId);
     if (ev.type === 'join') return reply_(ev.replyToken, 'สวัสดีค่ะ 🙏 เลขางานพันธกิจ H.I.M. ยินดีให้บริการค่ะ\nในกลุ่มนี้ ถ้าต้องการถามข้อมูล พิมพ์ขึ้นต้นด้วย "โรส" หรือแท็ก @ ถึงเลขาได้เลยค่ะ เช่น "โรส สรุปภาพรวม"');
     if (ev.type !== 'message' || ev.message.type !== 'text') return;
     let q = ev.message.text.trim(); const uid = ev.source.userId;
@@ -268,6 +282,13 @@ function webhook_(body) {
     reply_(ev.replyToken, text);
   });
   return ContentService.createTextOutput('ok');
+}
+function push_(to, text) {
+  UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push', {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    headers: { Authorization: 'Bearer ' + P.getProperty('LINE_ACCESS_TOKEN') },
+    payload: JSON.stringify({ to, messages: [{ type: 'text', text: text.slice(0, 4900) }] })
+  });
 }
 function reply_(token, text) {
   UrlFetchApp.fetch('https://api.line.me/v2/bot/message/reply', {
