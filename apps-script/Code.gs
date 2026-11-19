@@ -170,7 +170,7 @@ function api_(b) {
     const v = sh.getDataRange().getValues();
     if (b.action === 'members') return v.slice(1).filter(r => r[0] && u.codes.includes(r[1])).map(r => { const o = {}; MK.forEach((k, i) => o[k] = r[i] instanceof Date ? Utilities.formatDate(r[i], 'Asia/Bangkok', 'yyyy-MM-dd') : r[i]); return o; });
     if (u.role === 'exec') throw new Error('บัญชีผู้บริหารดูได้อย่างเดียว');
-    const m = b.m || {}; if (!u.codes.includes(m.code)) throw new Error('ไม่มีสิทธิ์จัดการสมาชิกของคริสตจักรนี้');
+    const m = b.m || {}, isNew = !m.id; if (!u.codes.includes(m.code)) throw new Error('ไม่มีสิทธิ์จัดการสมาชิกของคริสตจักรนี้');
     lock.waitLock(20000);
     try {
       const i = m.id ? v.findIndex(r => r[0] === m.id) : -1; if (i > 0 && !u.codes.includes(v[i][1])) throw new Error('ไม่มีสิทธิ์');
@@ -181,7 +181,7 @@ function api_(b) {
       const row = MK.map(k => k === 'dob' && m.dob ? "'" + m.dob : m[k] === true ? '✓' : m[k] === false ? '' : (m[k] ?? '')).concat([u.name || u.username, new Date()]);
       if (i > 0) sh.getRange(i + 1, 1, 1, row.length).setValues([row]); else sh.appendRow(row);
     } finally { lock.releaseLock(); }
-    log_(u.username, 'memberSave', { id: m.id, code: m.code }); { const cc = churches_().find(x => x.code === m.code); gpush_(`👥 ${i > 0 ? 'แก้ไข' : 'เพิ่ม'}ข้อมูลสมาชิก: ${m.nick || m.fn || ''}${m.status ? ' (' + m.status + ')' : ''}\n⛪ ${cc ? cc.name : m.code}\n✍️ โดย ${u.name || u.username}`); } return { id: m.id };
+    log_(u.username, 'memberSave', { id: m.id, code: m.code }); { const cc = churches_().find(x => x.code === m.code); gpush_(`👥 ${isNew ? 'เพิ่ม' : 'แก้ไข'}ข้อมูลสมาชิก: ${m.nick || m.fn || ''}${m.status ? ' (' + m.status + ')' : ''}\n⛪ ${cc ? cc.name : m.code}\n✍️ โดย ${u.name || u.username}`); } return { id: m.id };
   }
   if (b.action === 'linkcode') {                       // รหัสเชื่อม LINE OA
     const code = String(Math.floor(100000 + Math.random() * 900000));
