@@ -159,6 +159,7 @@ function api_(b) {
       if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
     } finally { lock.releaseLock(); }
     log_(u.username, 'regReport', { type: b.type, reg: b.reg, n: (b.rows || []).length });
+    gpush_(`📝 รายงานภาค ${b.reg} · ${({ r6: 'แผน 111', r5: 'Best Practice & Pain Point', r4: 'ผลการดำเนินงาน Q3', r2: 'แผนสถาบัน Youth', r8: 'ประชุมดาวิดภาค' })[b.type] || b.type}\n✍️ โดย ${u.name || u.username}`);
     return { saved: true };
   }
   if (['members', 'memberSave', 'memberDel'].includes(b.action)) {   // ทะเบียนสมาชิกรายคริสตจักร
@@ -180,7 +181,7 @@ function api_(b) {
       const row = MK.map(k => k === 'dob' && m.dob ? "'" + m.dob : m[k] === true ? '✓' : m[k] === false ? '' : (m[k] ?? '')).concat([u.name || u.username, new Date()]);
       if (i > 0) sh.getRange(i + 1, 1, 1, row.length).setValues([row]); else sh.appendRow(row);
     } finally { lock.releaseLock(); }
-    log_(u.username, 'memberSave', { id: m.id, code: m.code }); return { id: m.id };
+    log_(u.username, 'memberSave', { id: m.id, code: m.code }); { const cc = churches_().find(x => x.code === m.code); gpush_(`👥 ${i > 0 ? 'แก้ไข' : 'เพิ่ม'}ข้อมูลสมาชิก: ${m.nick || m.fn || ''}${m.status ? ' (' + m.status + ')' : ''}\n⛪ ${cc ? cc.name : m.code}\n✍️ โดย ${u.name || u.username}`); } return { id: m.id };
   }
   if (b.action === 'linkcode') {                       // รหัสเชื่อม LINE OA
     const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -199,13 +200,14 @@ function api_(b) {
       if (i > 0) sh.getRange(i + 1, 1, 1, row.length).setValues([row]); else sh.appendRow(row);
     } finally { lock.releaseLock(); }
     log_(u.username, 'submit', { code: c.code, round, n });
+    const xx = b.x || {}; gpush_(`📊 ส่งสถิติรอบ ${round}\n⛪ ${c.name} · ${c.reg}\n👥 มา คจ. ${n} คน${xx.mem ? ' · สมาชิก ' + xx.mem : ''}${b.lg ? ' · LG ' + b.lg : ''}${b.nw ? '\n🌱 ผู้มาใหม่ ' + b.nw : ''}${b.bp ? ' · บัพติศมา ' + b.bp : ''}\n✍️ โดย ${u.name || u.username}`);
     return { saved: true };
   }
   if (b.action === 'pioConfirm') {
     if (!['admin', 'coord'].includes(u.role) || !u.codes.includes(b.code)) throw new Error('เฉพาะผู้ประสานงานภาคยืนยันได้');
     const sh = ss().getSheetByName(SH.REG), v = sh.getDataRange().getValues(), i = v.findIndex(r => r[0] === b.code); if (i < 1) throw new Error('ไม่พบคริสตจักร');
     const t = '✅ ' + (u.name || u.username) + ' · ' + Utilities.formatDate(new Date(), 'Asia/Bangkok', 'd/M/yyyy');
-    sh.getRange(1, 28).setValue('ยืนยันโดยผู้ประสานงาน'); sh.getRange(i + 1, 28).setValue(t); log_(u.username, 'pioConfirm', { code: b.code }); return { pconf: t };
+    sh.getRange(1, 28).setValue('ยืนยันโดยผู้ประสานงาน'); sh.getRange(i + 1, 28).setValue(t); log_(u.username, 'pioConfirm', { code: b.code }); gpush_(`✅ ยืนยันข้อมูลกลุ่มบุกเบิก: ${v[i][4] || b.code}\n✍️ โดย ${u.name || u.username}`); return { pconf: t };
   }
   if (b.action === 'counselList') {
     if (!['admin', 'exec', 'coord'].includes(u.role)) throw new Error('ไม่มีสิทธิ์ดูคำขอปรึกษา');
@@ -232,6 +234,7 @@ function api_(b) {
     const old = {}; lock.waitLock(20000);
     try { Object.keys(f).forEach(k => { old[k] = v[i][k - 1]; sh.getRange(i + 1, Number(k)).setValue(f[k]); }); } finally { lock.releaseLock(); }
     log_(u.username, 'updateInfo', { code: b.code, old, new: f });
+    gpush_(`⛪ อัปเดตข้อมูล ${v[i][4] || b.code}${b.pio ? '\n🌱 กลุ่มบุกเบิก · ความถี่: ' + (b.freq || '-') + ' · ระยะ: ' + (b.stage || '-') + '\n⏳ รอผู้ประสานงานยืนยัน' : ''}\n✍️ โดย ${u.name || u.username}`);
     return { saved: true };
   }
   if (!admin) throw new Error('ต้องเป็นแอดมิน');
@@ -295,6 +298,7 @@ function webhook_(body) {
   });
   return ContentService.createTextOutput('ok');
 }
+function gpush_(text) { try { const g = P.getProperty('NOTIFY_GROUP'); if (g) push_(g, text); } catch (e) {} }
 function push_(to, text) {
   UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push', {
     method: 'post', contentType: 'application/json', muteHttpExceptions: true,
