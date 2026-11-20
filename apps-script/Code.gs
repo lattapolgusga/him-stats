@@ -35,7 +35,7 @@ function setup() {
 /* ---------- ข้อมูล ---------- */
 function rows_(name) { const v = ss().getSheetByName(name).getDataRange().getValues(); v.shift(); return v; }
 function churches_() {
-  return rows_(SH.REG).filter(r => r[0]).map(r => ({ code: r[0], reg: r[1], prov: r[2], type: r[3], name: r[4], leader: r[5], shirt: r[6], phone: r[7], email: r[8], reged: r[9], regdate: r[10], status: r[11], note: r[14], p111: !!r[15], plus: !!r[16], addr: r[17] || '', map: r[18] || '', photo: r[19] || '', pfull: r[20] || '', freq: r[21] || '', pstart: r[22] instanceof Date ? Utilities.formatDate(r[22], 'Asia/Bangkok', 'yyyy-MM-dd') : (r[22] || ''), mother: r[23] || '', meet: r[24] || '', stage: r[25] || '', need: r[26] || '', pconf: r[27] || '' }));
+  return rows_(SH.REG).filter(r => r[0] && r[11] !== 'ปิด').map(r => ({ code: r[0], reg: r[1], prov: r[2], type: r[3], name: r[4], leader: r[5], shirt: r[6], phone: r[7], email: r[8], reged: r[9], regdate: r[10], status: r[11], note: r[14], p111: !!r[15], plus: !!r[16], addr: r[17] || '', map: r[18] || '', photo: r[19] || '', pfull: r[20] || '', freq: r[21] || '', pstart: r[22] instanceof Date ? Utilities.formatDate(r[22], 'Asia/Bangkok', 'yyyy-MM-dd') : (r[22] || ''), mother: r[23] || '', meet: r[24] || '', stage: r[25] || '', need: r[26] || '', pconf: r[27] || '' }));
 }
 function stats_() {
   return rows_(SH.STAT).filter(r => r[0]).map(r => { const x = {}; XF.forEach(([k], j) => { if (r[11 + j] !== '' && r[11 + j] != null) x[k] = r[11 + j]; });
