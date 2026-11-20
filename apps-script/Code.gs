@@ -17,7 +17,7 @@ function regTargets_() {   // เป้าหมายรายภาค 2026 �
     c.put('rt', JSON.stringify(o), 600); return o; } catch (e) { return {}; }
 }
 
-const ss = () => SpreadsheetApp.getActiveSpreadsheet();
+const ss = () => SpreadsheetApp.openById('1WRbfK1_dg_rUDTlRiZdYIAFxhi5k2fnPvT9sBr5nppc'); // เปิดด้วย ID เสมอ (ใช้ได้ทั้งจากทริกเกอร์ของชีต v2)
 
 /** รันครั้งเดียวหลังวางโค้ด: สร้างแท็บผู้ใช้/บันทึก และหัวคอลัมน์สถิติ */
 const UHEAD = ['username','ชื่อ','บทบาท(leader/admin)','รหัสคริสตจักร(คั่นด้วย ,)','สถานะ(active/disabled)','สร้างเมื่อ','สร้างโดย','passwordHash','salt','lineUserId'];
@@ -416,4 +416,26 @@ function syncV2() {
     if (main) sh.getRange(h - 1, 1).setValue('ทะเบียนหลักทุกแห่ง (ซิงก์อัตโนมัติจากฐานข้อมูลกลาง ล่าสุด ' + Utilities.formatDate(new Date(), 'Asia/Bangkok', 'd/M/yyyy HH:mm') + ') · ขนาด XS<30, S 30-50, M 51-100, L 101+ · มาตรฐาน = 30 คนขึ้นไป · ยอดล่าสุด/ขนาด/มาตรฐาน คำนวณอัตโนมัติ');
   });
   Logger.log('syncV2 upd ' + upd + ' add ' + add);
+}
+
+/** แก้ในชีต v2 (แท็บ 1-5 คอลัมน์ ภาค..อีเมล) → เขียนกลับฐานข้อมูลกลางทันที แล้วซิงก์แท็บอื่นให้ตรงกัน */
+function onV2Edit(e) {
+  try {
+    const sh = e.range.getSheet(); if (!/^[1-5] /.test(sh.getName())) return;
+    const v = sh.getDataRange().getValues(); const h = v.findIndex(r => String(r[0]).trim() === 'ลำดับ'); if (h < 0) return;
+    const KC = v[h].indexOf('รหัส'); if (KC < 0) return;
+    const F = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9 }; // คอลัมน์ v2 (B..I) → คอลัมน์ฐานข้อมูลกลาง
+    const CDB = SpreadsheetApp.openById('1WRbfK1_dg_rUDTlRiZdYIAFxhi5k2fnPvT9sBr5nppc'), reg = CDB.getSheetByName(SH.REG), rv = reg.getDataRange().getValues(); let n = 0;
+    for (let r = e.range.getRow(); r <= e.range.getLastRow(); r++) {
+      const code = String(v[r - 1] && v[r - 1][KC] || '').trim(); if (!code || r - 1 <= h) continue;
+      const i = rv.findIndex(x => x[0] === code); if (i < 1) continue;
+      for (let c = e.range.getColumn(); c <= e.range.getLastColumn(); c++) {
+        if (!F[c]) continue; let x = v[r - 1][c - 1];
+        if (c === 2) x = String(x).replace(/([^\d\s])(\d)/, '$1 $2');
+        if (c === 4 && x === 'คจ') x = 'คริสตจักร';
+        if (String(rv[i][F[c] - 1]).trim() !== String(x).trim()) { reg.getRange(i + 1, F[c]).setValue(x); n++; }
+      }
+    }
+    if (n) { CDB.getSheetByName(SH.LOG).appendRow([new Date(), 'v2-sheet', 'v2Edit', JSON.stringify({ tab: sh.getName(), n })]); syncV2(); }
+  } catch (err) { console.error(err); }
 }
