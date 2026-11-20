@@ -391,3 +391,29 @@ function askAI_(q, u) {
   const txt = (j.content || []).map(x => x.text || '').join('').replace(/\*\*|__|^#+\s*/gm, '').trim();
   return txt || answer_(q, u);
 }
+
+/** ซิงก์ทะเบียน: ฐานข้อมูลกลาง → ชีต v2 แท็บ "1 ทะเบียน+ขนาด" (รันอัตโนมัติทุกชั่วโมง) */
+function syncV2() {
+  const V2 = '1YwI2oUb08zAVavO4o4moHpvjecQI0uTThvnul4wZDVg';
+  const sh = SpreadsheetApp.openById(V2).getSheetByName('1 ทะเบียน+ขนาด'); if (!sh) return;
+  const v = sh.getDataRange().getValues(); let h = v.findIndex(r => String(r[0]).trim() === 'ลำดับ'); if (h < 0) return;
+  let KC = v[h].indexOf('รหัส'); if (KC < 0) { KC = v[h].length; sh.getRange(h + 1, KC + 1).setValue('รหัส'); }
+  const pos = {}; let last = h, maxSeq = 0;
+  for (let i = h + 1; i < v.length; i++) { if (v[i][0] === '') continue; last = i; maxSeq = Math.max(maxSeq, +v[i][0] || 0); const k = String(v[i][KC] || '').trim(); if (k) pos[k] = i; }
+  const T = { 'คริสตจักร': 'คจ' };
+  let upd = 0, add = 0;
+  churches_().forEach(c => {
+    const want = [String(c.reg || '').replace(/\s/g, ''), c.prov, T[c.type] || c.type, c.name, c.leader, c.shirt, c.phone, c.email];
+    let i = pos[c.code];
+    if (i == null) {
+      sh.insertRowsAfter(last + 1, 1); const r = last + 2, W = sh.getLastColumn();
+      sh.getRange(last + 1, 1, 1, W).copyTo(sh.getRange(r, 1, 1, W));
+      for (let col = 2; col <= W; col++) { const cell = sh.getRange(r, col); if (!cell.getFormula()) cell.clearContent(); }
+      sh.getRange(r, 1).setValue(++maxSeq); sh.getRange(r, KC + 1).setValue(c.code);
+      sh.getRange(r, 2, 1, 8).setValues([want.map(x => x == null ? '' : x)]); last++; add++; return;
+    }
+    want.forEach((x, j) => { if (x !== '' && x != null && String(v[i][j + 1]).trim() !== String(x).trim()) { sh.getRange(i + 1, j + 2).setValue(x); upd++; } });
+  });
+  sh.getRange(h - 1, 1).setValue('ทะเบียนหลักทุกแห่ง (ซิงก์อัตโนมัติจากฐานข้อมูลกลาง ล่าสุด ' + Utilities.formatDate(new Date(), 'Asia/Bangkok', 'd/M/yyyy HH:mm') + ') · ขนาด XS<30, S 30-50, M 51-100, L 101+ · มาตรฐาน = 30 คนขึ้นไป · ยอดล่าสุด/ขนาด/มาตรฐาน คำนวณอัตโนมัติ');
+  Logger.log('syncV2 upd ' + upd + ' add ' + add);
+}
