@@ -427,6 +427,7 @@ function onV2Edit(e) {
     const v = sh.getDataRange().getValues(); const h = v.findIndex(r => String(r[0]).trim() === 'ลำดับ'); if (h < 0) return;
     const KC = v[h].indexOf('รหัส'); if (KC < 0) return;
     const F = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9 }; // คอลัมน์ v2 (B..I) → คอลัมน์ฐานข้อมูลกลาง
+    const EC = v[h].indexOf('ชื่อคริสตจักร (EN)'); if (EC >= 0) { F[EC + 1] = 29; F[EC + 2] = 30; }
     const CDB = SpreadsheetApp.openById('1WRbfK1_dg_rUDTlRiZdYIAFxhi5k2fnPvT9sBr5nppc'), reg = CDB.getSheetByName(SH.REG), rv = reg.getDataRange().getValues(); let n = 0;
     for (let r = e.range.getRow(); r <= e.range.getLastRow(); r++) {
       const code = String(v[r - 1] && v[r - 1][KC] || '').trim(); if (!code || r - 1 <= h) continue;
@@ -435,7 +436,8 @@ function onV2Edit(e) {
         if (!F[c]) continue; let x = v[r - 1][c - 1];
         if (c === 2) x = String(x).replace(/([^\d\s])(\d)/, '$1 $2');
         if (c === 4 && x === 'คจ') x = 'คริสตจักร';
-        if (String(rv[i][F[c] - 1]).trim() !== String(x).trim()) { reg.getRange(i + 1, F[c]).setValue(x); n++; }
+        if (String(x == null ? '' : x).trim() === '') continue; // กันการล้างข้อมูลในฐานข้อมูลกลางโดยไม่ตั้งใจ
+        if (String(rv[i][F[c] - 1] == null ? '' : rv[i][F[c] - 1]).trim() !== String(x).trim()) { reg.getRange(i + 1, F[c]).setValue(x); n++; if (F[c] >= 29) reg.getRange(i + 1, 31).setValue('ยืนยันแล้ว (แก้ในชีต v2)'); }
       }
     }
     if (n) { CDB.getSheetByName(SH.LOG).appendRow([new Date(), 'v2-sheet', 'v2Edit', JSON.stringify({ tab: sh.getName(), n })]); syncV2(); }
