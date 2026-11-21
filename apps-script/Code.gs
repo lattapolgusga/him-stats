@@ -398,7 +398,7 @@ function askAI_(q, u) {
 function syncV2() {
   const ssv = SpreadsheetApp.openById('1YwI2oUb08zAVavO4o4moHpvjecQI0uTThvnul4wZDVg');
   const T = { 'คริสตจักร': 'คจ' }, C = {}; churches_().forEach(c => C[c.code] = c);
-  const want = c => [String(c.reg || '').replace(/\s/g, ''), c.prov, T[c.type] || c.type, c.name, c.leader, '', c.phone, c.email];
+  const want = c => [String(c.reg || '').replace(/\s/g, ''), c.prov, T[c.type] || c.type, c.name, c.leader, c.phone, c.email]; // B..H (ลบคอลัมน์ไซส์เสื้อแล้ว)
   let upd = 0, add = 0;
   ssv.getSheets().filter(s => /^[1-5] /.test(s.getName())).forEach(sh => {
     const main = /^1 /.test(sh.getName());
@@ -428,7 +428,7 @@ function onV2Edit(e) {
     const sh = e.range.getSheet(); if (!/^[1-5] /.test(sh.getName())) return;
     const v = sh.getDataRange().getValues(); const h = v.findIndex(r => String(r[0]).trim() === 'ลำดับ'); if (h < 0) return;
     const KC = v[h].indexOf('รหัส'); if (KC < 0) return;
-    const F = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9 }; // คอลัมน์ v2 (B..I) → คอลัมน์ฐานข้อมูลกลาง
+    const F = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 8, 8: 9 }; // คอลัมน์ v2 (B..H) → คอลัมน์ฐานข้อมูลกลาง
     const EC = v[h].indexOf('ชื่อคริสตจักร (EN)'); if (EC >= 0) { F[EC + 1] = 29; F[EC + 2] = 30; }
     const CDB = SpreadsheetApp.openById('1WRbfK1_dg_rUDTlRiZdYIAFxhi5k2fnPvT9sBr5nppc'), reg = CDB.getSheetByName(SH.REG), rv = reg.getDataRange().getValues(); let n = 0;
     for (let r = e.range.getRow(); r <= e.range.getLastRow(); r++) {
