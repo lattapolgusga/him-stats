@@ -229,7 +229,7 @@ function api_(b) {
     const sh = ss().getSheetByName(SH.REG), v = sh.getDataRange().getValues();
     const i = v.findIndex(r => r[0] === b.code); if (i < 1) throw new Error('ไม่พบคริสตจักร');
     const clean = x => String(x == null ? '' : x).trim().slice(0, 120);
-    const f = { 3: clean(b.prov), 6: clean(b.leader), 7: clean(b.shirt), 8: clean(b.phone), 9: clean(b.email), 10: b.reged ? 'ขึ้นทะเบียนแล้ว' : '', 11: b.reged ? clean(b.regdate) : '', 16: b.p111 ? '✓' : '', 17: b.plus ? '✓' : '', 18: String(b.addr || '').trim().slice(0, 300), 19: clean(b.map) };
+    const f = { 3: clean(b.prov), 6: clean(b.leader), 8: clean(b.phone), 9: clean(b.email), 10: b.reged ? 'ขึ้นทะเบียนแล้ว' : '', 11: b.reged ? clean(b.regdate) : '', 16: b.p111 ? '✓' : '', 17: b.plus ? '✓' : '', 18: String(b.addr || '').trim().slice(0, 300), 19: clean(b.map) };
     if (b.en != null || b.enl != null) { Object.assign(f, { 29: clean(b.en), 30: clean(b.enl), 31: 'ยืนยันแล้ว (แก้ในเว็บ)' }); if (sh.getRange(1, 29).getValue() !== 'ชื่อคริสตจักร (EN)') sh.getRange(1, 29, 1, 3).setValues([['ชื่อคริสตจักร (EN)', 'ชื่อผู้นำ (EN)', 'สถานะชื่อ EN']]); }
     if (/[\u0E00-\u0E7F]/.test(String(f[29] || '') + String(f[30] || ''))) throw new Error('ชื่อภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษ');
     if (b.pio) { Object.assign(f, { 21: clean(b.pfull), 22: clean(b.freq), 23: clean(b.pstart), 24: clean(b.mother), 25: clean(b.meet), 26: clean(b.stage), 27: String(b.need || '').trim().slice(0, 300), 28: '' }); if (sh.getRange(1, 21).getValue() !== 'ผู้นำบุกเบิก (ชื่อ-สกุล)') sh.getRange(1, 21, 1, 7).setValues([['ผู้นำบุกเบิก (ชื่อ-สกุล)', 'ความถี่ลงพื้นที่', 'วันที่เริ่มบุกเบิก', 'คริสตจักรแม่', 'วัน-เวลานัดพบ', 'ระยะการเติบโต', 'สิ่งที่ต้องการสนับสนุน']]); }
