@@ -396,7 +396,7 @@ function askAI_(q, u) {
 function syncV2() {
   const ssv = SpreadsheetApp.openById('1YwI2oUb08zAVavO4o4moHpvjecQI0uTThvnul4wZDVg');
   const T = { 'คริสตจักร': 'คจ' }, C = {}; churches_().forEach(c => C[c.code] = c);
-  const want = c => [String(c.reg || '').replace(/\s/g, ''), c.prov, T[c.type] || c.type, c.name, c.leader, c.shirt, c.phone, c.email];
+  const want = c => [String(c.reg || '').replace(/\s/g, ''), c.prov, T[c.type] || c.type, c.name, c.leader, '', c.phone, c.email];
   let upd = 0, add = 0;
   ssv.getSheets().filter(s => /^[1-5] /.test(s.getName())).forEach(sh => {
     const main = /^1 /.test(sh.getName());
