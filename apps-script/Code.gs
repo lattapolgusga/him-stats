@@ -35,7 +35,7 @@ function setup() {
 /* ---------- ข้อมูล ---------- */
 function rows_(name) { const v = ss().getSheetByName(name).getDataRange().getValues(); v.shift(); return v; }
 function churches_() {
-  return rows_(SH.REG).filter(r => r[0] && r[11] !== 'ปิด').map(r => ({ code: r[0], reg: r[1], prov: r[2], type: r[3], name: r[4], leader: r[5], shirt: r[6], phone: r[7], email: r[8], reged: r[9], regdate: r[10], status: r[11], note: r[14], p111: !!r[15], plus: !!r[16], addr: r[17] || '', map: r[18] || '', photo: r[19] || '', pfull: r[20] || '', freq: r[21] || '', pstart: r[22] instanceof Date ? Utilities.formatDate(r[22], 'Asia/Bangkok', 'yyyy-MM-dd') : (r[22] || ''), mother: r[23] || '', meet: r[24] || '', stage: r[25] || '', need: r[26] || '', pconf: r[27] || '' }));
+  return rows_(SH.REG).filter(r => r[0] && r[11] !== 'ปิด').map(r => ({ code: r[0], reg: r[1], prov: r[2], type: r[3], name: r[4], leader: r[5], shirt: r[6], phone: r[7], email: r[8], reged: r[9], regdate: r[10], status: r[11], note: r[14], p111: !!r[15], plus: !!r[16], addr: r[17] || '', map: r[18] || '', photo: r[19] || '', pfull: r[20] || '', freq: r[21] || '', pstart: r[22] instanceof Date ? Utilities.formatDate(r[22], 'Asia/Bangkok', 'yyyy-MM-dd') : (r[22] || ''), mother: r[23] || '', meet: r[24] || '', stage: r[25] || '', need: r[26] || '', pconf: r[27] || '', en: r[28] || '', enl: r[29] || '' }));
 }
 function stats_() {
   return rows_(SH.STAT).filter(r => r[0]).map(r => { const x = {}; XF.forEach(([k], j) => { if (r[11 + j] !== '' && r[11 + j] != null) x[k] = r[11 + j]; });
@@ -402,10 +402,12 @@ function syncV2() {
     const main = /^1 /.test(sh.getName());
     const v = sh.getDataRange().getValues(); const h = v.findIndex(r => String(r[0]).trim() === 'ลำดับ'); if (h < 0) return;
     let KC = v[h].indexOf('รหัส'); if (KC < 0) { KC = v[h].length; sh.getRange(h + 1, KC + 1).setValue('รหัส'); }
+    let EC = v[h].indexOf('ชื่อคริสตจักร (EN)'); if (EC < 0) { EC = Math.max(v[h].length, KC + 1); sh.getRange(h + 1, EC + 1, 1, 2).setValues([['ชื่อคริสตจักร (EN)', 'ชื่อผู้นำ (EN)']]); }
     const pos = {}; let last = h, maxSeq = 0;
     for (let i = h + 1; i < v.length; i++) { if (v[i][0] === '') continue; last = i; maxSeq = Math.max(maxSeq, +v[i][0] || 0); const k = String(v[i][KC] || '').trim(); if (k) pos[k] = i; }
     Object.keys(pos).forEach(k => { const c = C[k]; if (!c) return; const i = pos[k];
-      want(c).forEach((x, j) => { if (x !== '' && x != null && String(v[i][j + 1]).trim() !== String(x).trim()) { sh.getRange(i + 1, j + 2).setValue(x); upd++; } }); });
+      want(c).forEach((x, j) => { if (x !== '' && x != null && String(v[i][j + 1]).trim() !== String(x).trim()) { sh.getRange(i + 1, j + 2).setValue(x); upd++; } });
+      [c.en, c.enl].forEach((x, j) => { if (x && String(v[i][EC + j] || '').trim() !== String(x).trim()) { sh.getRange(i + 1, EC + j + 1).setValue(x); upd++; } }); });
     if (main) Object.keys(C).filter(k => pos[k] == null).forEach(k => {
       sh.insertRowsAfter(last + 1, 1); const r = last + 2, W = sh.getLastColumn();
       sh.getRange(last + 1, 1, 1, W).copyTo(sh.getRange(r, 1, 1, W));
